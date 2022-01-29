@@ -1,0 +1,16 @@
+[package]
+name = "LittleVulkanEngine"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+log = "0.4.14"
+env_logger = "0.8.4"
+ash = "0.33.3+1.2.191"
+ash-window = "0.7.0"
+winit = "0.25.*"
+winit_input_helper = "0.10.0"
+winapi = "0.3.9"
+nalgebra = "0.29.0"
+time = "0.3.5"
+vk-shader-macros = "0.2.7"
