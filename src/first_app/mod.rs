@@ -156,171 +156,133 @@ impl VulkanApp {
         let transform = Some(TransformComponent {
             translation: na::vector![0.0, 0.0, 2.5],
             scale: na::vector![0.5, 0.5, 0.5],
-            rotation: na::vector![0.785398163, 0.785398163, 0.785398163],
+            rotation: na::vector![0.0, 0.0, 0.0],
         });
 
         vec![LveGameObject::new(lve_model, None, transform)]
     }
 
     fn create_cube_model(lve_device: &Rc<LveDevice>, offset: na::Vector3<f32>) -> Rc<LveModel> {
-        let mut vertices = vec![
+        let mut builder = Builder::new();
+        builder.vertices = vec![
             // left face (white)
             Vertex {
                 position: na::vector![-0.5, -0.5, -0.5],
-                color: na::vector![0.9, 0.9, 0.9],
+                color: na::vector![0.9, 0.9, 0.9]
             },
             Vertex {
                 position: na::vector![-0.5, 0.5, 0.5],
-                color: na::vector![0.9, 0.9, 0.9],
+                color: na::vector![0.9, 0.9, 0.9]
             },
             Vertex {
                 position: na::vector![-0.5, -0.5, 0.5],
-                color: na::vector![0.9, 0.9, 0.9],
-            },
-            Vertex {
-                position: na::vector![-0.5, -0.5, -0.5],
-                color: na::vector![0.9, 0.9, 0.9],
+                color: na::vector![0.9, 0.9, 0.9]
             },
             Vertex {
                 position: na::vector![-0.5, 0.5, -0.5],
-                color: na::vector![0.9, 0.9, 0.9],
+                color: na::vector![0.9, 0.9, 0.9]
             },
-            Vertex {
-                position: na::vector![-0.5, 0.5, 0.5],
-                color: na::vector![0.9, 0.9, 0.9],
-            },
-            // left face (yellow)
+
+            // right face (yellow)
             Vertex {
                 position: na::vector![0.5, -0.5, -0.5],
-                color: na::vector![0.8, 0.8, 0.1],
+                color: na::vector![0.8, 0.8, 0.1]
             },
             Vertex {
                 position: na::vector![0.5, 0.5, 0.5],
-                color: na::vector![0.8, 0.8, 0.1],
+                color: na::vector![0.8, 0.8, 0.1]
             },
             Vertex {
                 position: na::vector![0.5, -0.5, 0.5],
-                color: na::vector![0.8, 0.8, 0.1],
-            },
-            Vertex {
-                position: na::vector![0.5, -0.5, -0.5],
-                color: na::vector![0.8, 0.8, 0.1],
+                color: na::vector![0.8, 0.8, 0.1]
             },
             Vertex {
                 position: na::vector![0.5, 0.5, -0.5],
-                color: na::vector![0.8, 0.8, 0.1],
+                color: na::vector![0.8, 0.8, 0.1]
             },
-            Vertex {
-                position: na::vector![0.5, 0.5, 0.5],
-                color: na::vector![0.8, 0.8, 0.1],
-            },
-            // top face (orange)
+
+            // top face (orange, remember y axis points down)
             Vertex {
                 position: na::vector![-0.5, -0.5, -0.5],
-                color: na::vector![0.9, 0.6, 0.1],
+                color: na::vector![0.9, 0.6, 0.1]
             },
             Vertex {
                 position: na::vector![0.5, -0.5, 0.5],
-                color: na::vector![0.9, 0.6, 0.1],
+                color: na::vector![0.9, 0.6, 0.1]
             },
             Vertex {
                 position: na::vector![-0.5, -0.5, 0.5],
-                color: na::vector![0.9, 0.6, 0.1],
-            },
-            Vertex {
-                position: na::vector![-0.5, -0.5, -0.5],
-                color: na::vector![0.9, 0.6, 0.1],
+                color: na::vector![0.9, 0.6, 0.1]
             },
             Vertex {
                 position: na::vector![0.5, -0.5, -0.5],
-                color: na::vector![0.9, 0.6, 0.1],
+                color: na::vector![0.9, 0.6, 0.1]
             },
-            Vertex {
-                position: na::vector![0.5, -0.5, 0.5],
-                color: na::vector![0.9, 0.6, 0.1],
-            },
+
             // bottom face (red)
             Vertex {
                 position: na::vector![-0.5, 0.5, -0.5],
-                color: na::vector![0.8, 0.1, 0.1],
+                color: na::vector![0.8, 0.1, 0.1]
             },
             Vertex {
                 position: na::vector![0.5, 0.5, 0.5],
-                color: na::vector![0.8, 0.1, 0.1],
+                color: na::vector![0.8, 0.1, 0.1]
             },
             Vertex {
                 position: na::vector![-0.5, 0.5, 0.5],
-                color: na::vector![0.8, 0.1, 0.1],
-            },
-            Vertex {
-                position: na::vector![-0.5, 0.5, -0.5],
-                color: na::vector![0.8, 0.1, 0.1],
+                color: na::vector![0.8, 0.1, 0.1]
             },
             Vertex {
                 position: na::vector![0.5, 0.5, -0.5],
-                color: na::vector![0.8, 0.1, 0.1],
+                color: na::vector![0.8, 0.1, 0.1]
             },
-            Vertex {
-                position: na::vector![0.5, 0.5, 0.5],
-                color: na::vector![0.8, 0.1, 0.1],
-            },
-            // front face (blue)
+
+            // nose face (blue)
             Vertex {
                 position: na::vector![-0.5, -0.5, 0.5],
-                color: na::vector![0.1, 0.1, 0.8],
+                color: na::vector![0.1, 0.1, 0.8]
             },
             Vertex {
                 position: na::vector![0.5, 0.5, 0.5],
-                color: na::vector![0.1, 0.1, 0.8],
+                color: na::vector![0.1, 0.1, 0.8]
             },
             Vertex {
                 position: na::vector![-0.5, 0.5, 0.5],
-                color: na::vector![0.1, 0.1, 0.8],
-            },
-            Vertex {
-                position: na::vector![-0.5, -0.5, 0.5],
-                color: na::vector![0.1, 0.1, 0.8],
+                color: na::vector![0.1, 0.1, 0.8]
             },
             Vertex {
                 position: na::vector![0.5, -0.5, 0.5],
-                color: na::vector![0.1, 0.1, 0.8],
+                color: na::vector![0.1, 0.1, 0.8]
             },
-            Vertex {
-                position: na::vector![0.5, 0.5, 0.5],
-                color: na::vector![0.1, 0.1, 0.8],
-            },
-            // front face (blue)
+
+            // tail face (green)
             Vertex {
                 position: na::vector![-0.5, -0.5, -0.5],
-                color: na::vector![0.1, 0.8, 0.1],
+                color: na::vector![0.1, 0.8, 0.1]
             },
             Vertex {
                 position: na::vector![0.5, 0.5, -0.5],
-                color: na::vector![0.1, 0.8, 0.1],
+                color: na::vector![0.1, 0.8, 0.1]
             },
             Vertex {
                 position: na::vector![-0.5, 0.5, -0.5],
-                color: na::vector![0.1, 0.8, 0.1],
-            },
-            Vertex {
-                position: na::vector![-0.5, -0.5, -0.5],
-                color: na::vector![0.1, 0.8, 0.1],
+                color: na::vector![0.1, 0.8, 0.1]
             },
             Vertex {
                 position: na::vector![0.5, -0.5, -0.5],
-                color: na::vector![0.1, 0.8, 0.1],
-            },
-            Vertex {
-                position: na::vector![0.5, 0.5, -0.5],
-                color: na::vector![0.1, 0.8, 0.1],
+                color: na::vector![0.1, 0.8, 0.1]
             },
         ];
 
-        for v in vertices.iter_mut() {
+        for v in builder.vertices.iter_mut() {
             v.position += offset;
         }
 
-        LveModel::new(Rc::clone(lve_device), &vertices, "cube")
+        //builder.indices = vec![0, 1, 2, 2, 3, 0];
+
+        builder.indices = vec![0,  1,  2,  0,  3,  1,  4,  5,  6,  4,  7,  5,  8,  9,  10, 8,  11, 9, 12, 13, 14, 12, 15, 13, 16, 17, 18, 16, 19, 17, 20, 21, 22, 20, 23, 2];
+
+        LveModel::new(Rc::clone(lve_device), &builder, "cube")
     }
 }
 
