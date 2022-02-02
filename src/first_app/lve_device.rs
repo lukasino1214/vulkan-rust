@@ -292,8 +292,7 @@ impl LveDevice {
             .size(size);
 
         unsafe {
-            self.device
-                .cmd_copy_buffer(command_buffer, src_buffer, dst_buffer, std::slice::from_ref(&copy_region))
+            self.device.cmd_copy_buffer(command_buffer, src_buffer, dst_buffer, std::slice::from_ref(&copy_region))
         };
 
         self.end_single_time_commands(command_buffer);

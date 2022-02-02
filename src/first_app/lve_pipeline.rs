@@ -177,8 +177,13 @@ impl LvePipeline {
             "Cannot create graphics pipeline:: no render_pass provided in config_info"
         );
 
-        let vert_code = vk_shader_macros::include_glsl!("./shaders/simple_shader.vert", kind: vert).to_vec();
-        let frag_code = vk_shader_macros::include_glsl!("./shaders/simple_shader.frag", kind: frag).to_vec();
+        let vert_source: &str = &std::fs::read_to_string(vert_file_path).expect("Something went wrong reading the file");
+        let frag_source: &str = &std::fs::read_to_string(frag_file_path).expect("Something went wrong reading the file");
+
+        let mut compiler = shaderc::Compiler::new().unwrap();
+
+        let vert_code = compiler.compile_into_spirv(vert_source, shaderc::ShaderKind::Vertex,vert_file_path, "main", None).unwrap().as_binary().to_vec();
+        let frag_code = compiler.compile_into_spirv(frag_source, shaderc::ShaderKind::Fragment,frag_file_path, "main", None).unwrap().as_binary().to_vec();
 
         let vert_shader_module = Self::create_shader_module(device, &vert_code);
         let frag_shader_module = Self::create_shader_module(device, &frag_code);

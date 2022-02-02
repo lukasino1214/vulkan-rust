@@ -28,8 +28,8 @@ use std::rc::Rc;
 
 extern crate nalgebra as na;
 
-const WIDTH: u32 = 800;
-const HEIGHT: u32 = 600;
+const WIDTH: u32 = 1280;
+const HEIGHT: u32 = 720;
 const NAME: &str = "Vulkan but with Rust 👀";
 
 pub struct VulkanApp {
@@ -151,7 +151,7 @@ impl VulkanApp {
     }
 
     fn load_game_objects(lve_device: &Rc<LveDevice>) -> Vec<LveGameObject> {
-        let lve_model = Self::create_cube_model(lve_device, na::vector![0.0, 0.0, 0.0]);
+        let lve_model = LveModel::new_from_file(Rc::clone(lve_device), "cube", "./models/smooth_vase.obj");
 
         let transform = Some(TransformComponent {
             translation: na::vector![0.0, 0.0, 2.5],
@@ -162,13 +162,13 @@ impl VulkanApp {
         vec![LveGameObject::new(lve_model, None, transform)]
     }
 
-    fn create_cube_model(lve_device: &Rc<LveDevice>, offset: na::Vector3<f32>) -> Rc<LveModel> {
+    /*fn create_cube_model(lve_device: &Rc<LveDevice>, offset: na::Vector3<f32>) -> Rc<LveModel> {
         let mut builder = Builder::new();
         builder.vertices = vec![
             // left face (white)
             Vertex {
                 position: na::vector![-0.5, -0.5, -0.5],
-                color: na::vector![0.9, 0.9, 0.9]
+                color: na::vector![0.9, 0.9, 0.9],
             },
             Vertex {
                 position: na::vector![-0.5, 0.5, 0.5],
@@ -280,10 +280,11 @@ impl VulkanApp {
 
         //builder.indices = vec![0, 1, 2, 2, 3, 0];
 
-        builder.indices = vec![0,  1,  2,  0,  3,  1,  4,  5,  6,  4,  7,  5,  8,  9,  10, 8,  11, 9, 12, 13, 14, 12, 15, 13, 16, 17, 18, 16, 19, 17, 20, 21, 22, 20, 23, 2];
+        builder.indices = vec![0,  1,  2,  0,  3,  1,  4,  5,  6,  4,  7,  5,  8,  9,  10, 8,  11, 9,
+        12, 13, 14, 12, 15, 13, 16, 17, 18, 16, 19, 17, 20, 21, 22, 20, 23, 21];
 
         LveModel::new(Rc::clone(lve_device), &builder, "cube")
-    }
+    }*/
 }
 
 impl Drop for VulkanApp {

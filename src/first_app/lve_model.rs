@@ -10,11 +10,15 @@ extern crate nalgebra as na;
 
 type Pos = na::Vector3<f32>;
 type Color = na::Vector3<f32>;
+type Normal = na::Vector3<f32>;
+type UV = na::Vector2<f32>;
 
 #[derive(Clone, Copy)]
 pub struct Vertex {
     pub position: Pos,
     pub color: Color,
+    pub normal: Normal,
+    pub uv: UV
 }
 
 pub struct Builder {
@@ -28,6 +32,69 @@ impl Builder {
             vertices: Vec::new(),
             indices: Vec::new()
         }
+    }
+
+    pub fn load_from_file(&mut self, file_path: &str) {
+        let (models, _) = tobj::load_obj(
+            file_path,
+            &tobj::LoadOptions {
+                single_index: true,
+                triangulate: true,
+                ..Default::default()
+            },
+        ).unwrap();
+
+        let mesh = &models[0].mesh;
+
+        let positions = mesh.positions.as_slice();
+        let colors = mesh.vertex_color.as_slice();
+        let normals = mesh.normals.as_slice();
+        let coords = mesh.texcoords.as_slice();
+
+        let vertex_count = mesh.positions.len() / 3;
+
+        let mut vertices = Vec::with_capacity(vertex_count);
+        for i in 0..vertex_count {
+            let x = positions[3 * i + 0];
+            let y = positions[3 * i + 1];
+            let z = positions[3 * i + 2];
+
+            let color_x;
+            let color_y;
+            let color_z;
+
+            //aint working
+
+            let color_index = 3 * i + 2;
+            if color_index < colors.len() {
+                color_x = colors[3 * i - 2];
+                color_y = colors[3 * i - 1];
+                color_z = colors[3 * i - 0];
+            } else {
+                color_x = 1.0;
+                color_y = 1.0;
+                color_z = 1.0;
+            }
+
+            let normal_x = normals[3 * i + 0];
+            let normal_y = normals[3 * i + 1];
+            let normal_z = normals[3 * i + 2];
+
+            let u = coords[2 * i + 0];
+            let v = coords[2 * i + 1];
+
+            let vertex = Vertex {
+                position: na::vector!(x, y, z),
+                color: na::vector!(color_x, color_y, color_z),
+                normal: na::vector!(normal_x, normal_y, normal_z),
+                uv: na::vector!(u, v),
+            };
+
+            vertices.push(vertex);
+        }
+
+        self.vertices = vertices;
+        self.indices = mesh.indices.clone();
     }
 }
 
@@ -48,13 +115,25 @@ impl Vertex {
                 .binding(0)
                 .location(0)
                 .format(vk::Format::R32G32B32_SFLOAT)
-                .offset(0)
+                .offset(memoffset::offset_of!(Vertex, position) as u32)
                 .build(),
             vk::VertexInputAttributeDescription::builder()
                 .binding(0)
                 .location(1)
                 .format(vk::Format::R32G32B32_SFLOAT)
-                .offset(size_of::<Pos>() as u32) // Using size of the position field
+                .offset(memoffset::offset_of!(Vertex, color) as u32) // Using size of the position field
+                .build(),
+            vk::VertexInputAttributeDescription::builder()
+                .binding(0)
+                .location(2)
+                .format(vk::Format::R32G32B32_SFLOAT)
+                .offset(memoffset::offset_of!(Vertex, normal) as u32) // Using size of the position field
+                .build(),
+            vk::VertexInputAttributeDescription::builder()
+                .binding(0)
+                .location(3)
+                .format(vk::Format::R32G32_SFLOAT)
+                .offset(memoffset::offset_of!(Vertex, uv) as u32) // Using size of the position field
                 .build(),
         ]
     }
@@ -74,10 +153,9 @@ pub struct LveModel {
 
 impl LveModel {
     pub fn new(lve_device: Rc<LveDevice>, builder: &Builder, name: &str) -> Rc<Self> {
-        let (vertex_buffer, vertex_buffer_memory, vertex_count) =
-            Self::create_vertex_buffers(&lve_device, &builder.vertices);
-        let (has_index_buffer, index_buffer, index_buffer_memory, index_count) =
-            Self::create_index_buffers(&lve_device, &builder.indices);
+        let (vertex_buffer, vertex_buffer_memory, vertex_count) = Self::create_vertex_buffers(&lve_device, &builder.vertices);
+        let (has_index_buffer, index_buffer, index_buffer_memory, index_count) = Self::create_index_buffers(&lve_device, &builder.indices);
+        
         Rc::new(Self {
             lve_device,
             vertex_buffer,
@@ -89,6 +167,13 @@ impl LveModel {
             index_count,
             name: String::from_str(name).unwrap(),
         })
+    }
+
+    pub fn new_from_file(lve_device: Rc<LveDevice>, name: &str, file_path: &str) -> Rc<Self> {
+        let mut builder = Builder::new();
+        builder.load_from_file(file_path);
+
+        LveModel::new(lve_device, &builder, name)
     }
 
     pub fn new_null(lve_device: Rc<LveDevice>, name: &str) -> Rc<Self> {
@@ -107,7 +192,7 @@ impl LveModel {
 
     pub unsafe fn draw(&self, device: &Device, command_buffer: vk::CommandBuffer) {
         if self.has_index_buffer {
-            device.cmd_draw(command_buffer, self.index_count, 1, 0, 0);
+            device.cmd_draw_indexed(command_buffer, self.index_count, 1, 0, 0, 0);
         } else {
             device.cmd_draw(command_buffer, self.vertex_count, 1, 0, 0);
         }
@@ -129,9 +214,9 @@ impl LveModel {
 
         let buffer_size: vk::DeviceSize = (size_of::<Vertex>() * vertex_count) as u64;
 
-        let (vertex_buffer, vertex_buffer_memory) = lve_device.create_buffer(
+        let (staging_buffer, staging_buffer_memory) = lve_device.create_buffer(
             buffer_size,
-            vk::BufferUsageFlags::VERTEX_BUFFER,
+            vk::BufferUsageFlags::TRANSFER_SRC,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT, // Accessible from the host (cpu)
         );
 
@@ -139,7 +224,7 @@ impl LveModel {
             let data_ptr = lve_device
                 .device
                 .map_memory(
-                    vertex_buffer_memory,
+                    staging_buffer_memory,
                     0,
                     buffer_size,
                     vk::MemoryMapFlags::empty(),
@@ -152,8 +237,21 @@ impl LveModel {
 
             align.copy_from_slice(vertices);
 
-            lve_device.device.unmap_memory(vertex_buffer_memory);
+            lve_device.device.unmap_memory(staging_buffer_memory);
         };
+
+        let (vertex_buffer, vertex_buffer_memory) = lve_device.create_buffer(
+            buffer_size,
+            vk::BufferUsageFlags::VERTEX_BUFFER | vk::BufferUsageFlags::TRANSFER_DST,
+            vk::MemoryPropertyFlags::DEVICE_LOCAL,
+        );
+
+        lve_device.copy_buffer(staging_buffer, vertex_buffer, buffer_size);
+
+        unsafe {
+            lve_device.device.destroy_buffer(staging_buffer, None);
+            lve_device.device.free_memory(staging_buffer_memory, None);
+        }
 
         (vertex_buffer, vertex_buffer_memory, vertex_count as u32)
     }
@@ -170,9 +268,10 @@ impl LveModel {
 
         let buffer_size: vk::DeviceSize = (size_of::<u32>() * index_count) as u64;
 
-        let (index_buffer, index_buffer_memory) = lve_device.create_buffer(
+
+        let (staging_buffer, staging_buffer_memory) = lve_device.create_buffer(
             buffer_size,
-            vk::BufferUsageFlags::INDEX_BUFFER,
+            vk::BufferUsageFlags::TRANSFER_SRC,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT, // Accessible from the host (cpu)
         );
 
@@ -180,7 +279,7 @@ impl LveModel {
             let data_ptr = lve_device
                 .device
                 .map_memory(
-                    index_buffer_memory,
+                    staging_buffer_memory,
                     0,
                     buffer_size,
                     vk::MemoryMapFlags::empty(),
@@ -192,18 +291,21 @@ impl LveModel {
 
             align.copy_from_slice(indices);
 
-            //data_ptr.copy_from_nonoverlapping(indices.as_ptr(), indices.len());
-
-
-            /*let mut index_slice = ash::util::Align::new(
-                data_ptr,
-                std::mem::align_of::<u32>() as u64,
-                buffer_size,
-            );
-            index_slice.copy_from_slice(&indices);*/
-
-            lve_device.device.unmap_memory(index_buffer_memory);
+            lve_device.device.unmap_memory(staging_buffer_memory);
         };
+
+        let (index_buffer, index_buffer_memory) = lve_device.create_buffer(
+            buffer_size,
+            vk::BufferUsageFlags::INDEX_BUFFER | vk::BufferUsageFlags::TRANSFER_DST,
+            vk::MemoryPropertyFlags::DEVICE_LOCAL, // Accessible from the host (cpu)
+        );
+
+        lve_device.copy_buffer(staging_buffer, index_buffer, buffer_size);
+
+        unsafe {
+            lve_device.device.destroy_buffer(staging_buffer, None);
+            lve_device.device.free_memory(staging_buffer_memory, None);
+        }
 
         (has_index_buffer, index_buffer, index_buffer_memory, index_count as u32)
     }

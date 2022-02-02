@@ -72,8 +72,8 @@ impl SimpleRenderSystem {
 
         LvePipeline::new(
             lve_device,
-            "shaders/simple_shader.vert.spv",
-            "shaders/simple_shader.frag.spv",
+            "./shaders/simple_shader.vert",
+            "./shaders/simple_shader.frag",
             pipeline_config,
             render_pass,
             pipeline_layout,
