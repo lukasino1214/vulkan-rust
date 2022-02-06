@@ -49,7 +49,6 @@ where
         let buffer = ash::vk::Buffer::null();
         let memory = ash::vk::DeviceMemory::null();
 
-
         Self {
             lve_device,
             mapped: None,

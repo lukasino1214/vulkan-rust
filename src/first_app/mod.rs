@@ -9,6 +9,7 @@ mod lve_renderer;
 mod lve_swapchain;
 mod lve_buffer;
 mod simple_render_system;
+mod point_render_system;
 mod lve_descriptor_set;
 
 use keyboard_movement_controller::*;
@@ -18,6 +19,7 @@ use lve_game_object::*;
 use lve_model::*;
 use lve_renderer::*;
 use simple_render_system::*;
+use point_render_system::*;
 use lve_frame_info::*;
 use lve_descriptor_set::*;
 
@@ -50,6 +52,7 @@ pub struct VulkanApp {
     pub window: Window,
     lve_renderer: LveRenderer,
     simple_render_system: SimpleRenderSystem,
+    point_render_system: PointRenderSystem,
     game_objects: Vec<LveGameObject>,
     viewer_object: LveGameObject,
     camera_controller: KeyboardMovementController,
@@ -122,11 +125,18 @@ impl VulkanApp {
             &[global_set_layout.layout]
         );
 
+        let point_render_system = PointRenderSystem::new(
+            Rc::clone(&lve_device),
+            &lve_renderer.get_swapchain_render_pass(),
+            &[global_set_layout.layout]
+        );
+
         (
             Self {
                 window,
                 lve_renderer,
                 simple_render_system,
+                point_render_system,
                 game_objects,
                 viewer_object,
                 camera_controller,
@@ -190,12 +200,11 @@ impl VulkanApp {
                 };
 
                 let ubo = GlobalUbo {
-                    projection_matrix: frame_info.camera.projection_matrix,
-                    view_matrix: frame_info.camera.view_matrix,
-                    ambient_light_color: na::vector![1.0, 1.0, 1.0, 0.02],
-                    light_position: na::vector![-1.0, -1.0, -1.0],
-                    padding: 0,
-                    light_color: na::vector![1.0, 1.0, 1.0, 1.0]
+                    projection_matrix: Align16(frame_info.camera.projection_matrix),
+                    view_matrix: Align16(frame_info.camera.view_matrix),
+                    ambient_light_color: Align16(na::vector![1.0, 1.0, 1.0, 0.02]),
+                    light_position: Align16(na::vector![-1.0, -1.0, -1.0]),
+                    light_color: Align16(na::vector![1.0, 1.0, 1.0, 1.0])
                 };
 
                 self.ubo_buffers[frame_index].write_to_buffer(&[ubo]);
@@ -206,8 +215,8 @@ impl VulkanApp {
                 self.simple_render_system.render_game_objects(
                     &frame_info,
                     &mut self.game_objects,
-        
                 );
+                self.point_render_system.render(&frame_info);
                 self.lve_renderer.end_swapchain_render_pass(command_buffer);
             }
             None => {}
