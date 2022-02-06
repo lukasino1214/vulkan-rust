@@ -79,7 +79,7 @@ impl VulkanApp {
         });
 
         let viewer_object = LveGameObject::new(
-            LveModel::new_null(Rc::clone(&lve_device), "camera"),
+            None,
             None,
             camera_transform,
         );
@@ -196,26 +196,27 @@ impl VulkanApp {
                     frame_time,
                     command_buffer,
                     camera,
-                    global_descriptor_set: self.global_descriptor_sets[frame_index]
+                    global_descriptor_set: self.global_descriptor_sets[frame_index],
+                    game_objects: &self.game_objects
                 };
 
-                let ubo = GlobalUbo {
+                let mut ubo = GlobalUbo {
                     projection_matrix: Align16(frame_info.camera.projection_matrix),
                     view_matrix: Align16(frame_info.camera.view_matrix),
+                    //ambient_light_color: Align16(na::vector![1.0, 1.0, 1.0, 0.02]),
                     ambient_light_color: Align16(na::vector![1.0, 1.0, 1.0, 0.02]),
-                    light_position: Align16(na::vector![-1.0, -1.0, -1.0]),
-                    light_color: Align16(na::vector![1.0, 1.0, 1.0, 1.0])
+                    point_lights: [PointLight { position: na::vector![0.0,0.0,0.0,0.0], color: na::vector![0.0,0.0,0.0,0.0] }; MAX_LIGHTS],
+                    num_lights: 0
                 };
+
+                self.point_render_system.update(&frame_info, &mut ubo);
 
                 self.ubo_buffers[frame_index].write_to_buffer(&[ubo]);
                 //self.ubo_buffers[frame_index].flush();
 
                 self.lve_renderer
                     .begin_swapchain_render_pass(command_buffer);
-                self.simple_render_system.render_game_objects(
-                    &frame_info,
-                    &mut self.game_objects,
-                );
+                self.simple_render_system.render_game_objects(&frame_info);
                 self.point_render_system.render(&frame_info);
                 self.lve_renderer.end_swapchain_render_pass(command_buffer);
             }
@@ -248,7 +249,7 @@ impl VulkanApp {
         let vase = LveModel::new_from_file(Rc::clone(lve_device), "cube", "./models/smooth_vase.obj");
 
         let vase_transform = Some(TransformComponent {
-            translation: na::vector![0.0, 0.0, 0.0],
+            translation: na::vector![0.0, 0.0, 0.2],
             scale: na::vector![0.5, 0.5, 0.5],
             rotation: na::vector![0.0, 0.0, 0.0],
         });
@@ -261,7 +262,38 @@ impl VulkanApp {
             rotation: na::vector![0.0, 0.0, 0.0],
         });
 
-        vec![LveGameObject::new(vase, None, vase_transform), LveGameObject::new(floor, None, floor_transform)]
+        let mut game_objects: Vec<LveGameObject> = Vec::new();
+
+        game_objects.push(LveGameObject::new(Some(vase), None, vase_transform));
+        game_objects.push(LveGameObject::new(Some(floor), None, floor_transform));
+
+        let light_colors = vec![
+            na::vector![1.0, 0.1, 0.1],
+            na::vector![0.1, 0.1, 1.0],
+            na::vector![0.1, 1.0, 0.1],
+            na::vector![1.0, 1.0, 0.1],
+            na::vector![0.1, 1.0, 1.0],
+            na::vector![1.0, 1.0, 1.0],
+        ];
+
+        /*for (i, color) in light_colors.iter().enumerate() {
+            let mut point_light = LveGameObject::make_point_light(0.2, 0.1, *color);
+
+            let rotate_light = glam::Mat4::from_axis_angle(na::vector![0.0, -1.0, 0.0], i as f32 * (3.14 * 2.0) / light_colors.len() as f32);
+            let xyz = rotate_light * glam::vec4(-1.0, -1.0, -1.0, 1.0);
+            point_light.transform.translation = glam::vec3(xyz.x, xyz.y + 1.0, xyz.z - 5.0);
+            game_objects.insert(point_light.id, point_light);
+        }*/
+
+        game_objects.push(LveGameObject::make_point_light(0.1, 0.05, light_colors[0]));
+        game_objects[2].transform.translation = na::vector![0.0, -0.4, 0.0];
+        game_objects.push(LveGameObject::make_point_light(0.1, 0.05, light_colors[1]));
+        game_objects[3].transform.translation = na::vector![0.5, -0.4, 0.0];
+        game_objects.push(LveGameObject::make_point_light(0.1, 0.05, light_colors[2]));
+        game_objects[4].transform.translation = na::vector![-0.5, -0.4, 0.0];
+
+        //vec![LveGameObject::new(Some(vase), None, vase_transform), LveGameObject::new(Some(floor), None, floor_transform), LveGameObject::make_point_light(1.0, 0.05, na::vector![1.0, 1.0, 1.0])]
+        game_objects
     }
 }
 

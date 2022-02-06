@@ -103,8 +103,7 @@ impl SimpleRenderSystem {
 
     pub fn render_game_objects(
         &mut self,
-        frame_info: &FrameInfo,
-        game_objects: &mut Vec<LveGameObject>,
+        frame_info: &FrameInfo
     ) {
         unsafe { 
             self.lve_pipeline.bind(&self.lve_device.device, frame_info.command_buffer);
@@ -120,7 +119,7 @@ impl SimpleRenderSystem {
 
         let projection_view = frame_info.camera.projection_matrix * frame_info.camera.view_matrix;
 
-        for game_obj in game_objects.iter_mut() {
+        for game_obj in frame_info.game_objects.iter() {
 
             let push = SimplePushConstantData {
                 model_matrix: Align16(game_obj.transform.mat4()),
@@ -138,8 +137,13 @@ impl SimpleRenderSystem {
                     push_ptr,
                 );
 
-                game_obj.model.bind(&self.lve_device.device, frame_info.command_buffer);
-                game_obj.model.draw(&self.lve_device.device, frame_info.command_buffer);
+                match &game_obj.model {
+                    Some(_) => {
+                        game_obj.model.as_ref().unwrap().bind(&self.lve_device.device, frame_info.command_buffer);
+                        game_obj.model.as_ref().unwrap().draw(&self.lve_device.device, frame_info.command_buffer);
+                    }
+                    _ => (),
+                }
             }
         }
     }

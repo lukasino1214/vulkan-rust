@@ -46,15 +46,20 @@ impl TransformComponent {
     }
 }
 
+pub struct PointLightComponent {
+    pub light_intensity: f32
+}
+
 pub struct LveGameObject {
-    pub model: Rc<LveModel>,
+    pub model: Option<Rc<LveModel>>,
     pub color: na::Vector3<f32>,
     pub transform: TransformComponent,
+    pub point_light: Option<PointLightComponent>
 }
 
 impl LveGameObject {
     pub fn new(
-        model: Rc<LveModel>,
+        model: Option<Rc<LveModel>>,
         color: Option<na::Vector3<f32>>,
         transform: Option<TransformComponent>,
     ) -> Self {
@@ -77,6 +82,24 @@ impl LveGameObject {
             model,
             color,
             transform,
+            point_light: None
         }
+    }
+
+    pub fn make_point_light(intensity: f32, radius: f32, color: na::Vector3<f32>) -> Self {
+        let mut game_object = Self::new(
+            None,
+            Some(color),
+            Some(TransformComponent {
+                translation: na::vector![0.0, 0.0, 0.0],
+                scale: na::vector![radius, 0.0, 0.0],
+                rotation: na::vector![0.0, 0.0, 0.0],
+            }));
+
+        game_object.point_light = Some(PointLightComponent {
+            light_intensity: intensity,
+        });
+
+        game_object
     }
 }
