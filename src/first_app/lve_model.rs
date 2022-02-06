@@ -1,4 +1,5 @@
 use super::lve_device::*;
+use super::lve_buffer::*;
 
 use ash::{vk, Device};
 
@@ -13,7 +14,7 @@ type Color = na::Vector3<f32>;
 type Normal = na::Vector3<f32>;
 type UV = na::Vector2<f32>;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct Vertex {
     pub position: Pos,
     pub color: Color,
@@ -141,29 +142,25 @@ impl Vertex {
 
 pub struct LveModel {
     lve_device: Rc<LveDevice>,
-    vertex_buffer: vk::Buffer,
-    vertex_buffer_memory: vk::DeviceMemory,
+    vertex_buffer: LveBuffer<Vertex>,
     vertex_count: u32,
     has_index_buffer: bool,
-    index_buffer: vk::Buffer,
-    index_buffer_memory: vk::DeviceMemory,
+    index_buffer: LveBuffer<u32>,
     index_count: u32,
     name: String,
 }
 
 impl LveModel {
     pub fn new(lve_device: Rc<LveDevice>, builder: &Builder, name: &str) -> Rc<Self> {
-        let (vertex_buffer, vertex_buffer_memory, vertex_count) = Self::create_vertex_buffers(&lve_device, &builder.vertices);
-        let (has_index_buffer, index_buffer, index_buffer_memory, index_count) = Self::create_index_buffers(&lve_device, &builder.indices);
+        let (vertex_buffer, vertex_count) = Self::create_vertex_buffers(&lve_device, &builder.vertices);
+        let (has_index_buffer, index_buffer, index_count) = Self::create_index_buffers(&lve_device, &builder.indices);
         
         Rc::new(Self {
             lve_device,
             vertex_buffer,
-            vertex_buffer_memory,
             vertex_count,
             has_index_buffer,
             index_buffer,
-            index_buffer_memory,
             index_count,
             name: String::from_str(name).unwrap(),
         })
@@ -177,14 +174,14 @@ impl LveModel {
     }
 
     pub fn new_null(lve_device: Rc<LveDevice>, name: &str) -> Rc<Self> {
+        let vertex_buffer = LveBuffer::null(Rc::clone(&lve_device));
+        let index_buffer = LveBuffer::null(Rc::clone(&lve_device));
         Rc::new(Self {
             lve_device,
-            vertex_buffer: vk::Buffer::null(),
-            vertex_buffer_memory: vk::DeviceMemory::null(),
+            vertex_buffer,
             vertex_count: 0,
             has_index_buffer: false,
-            index_buffer: vk::Buffer::null(),
-            index_buffer_memory: vk::DeviceMemory::null(),
+            index_buffer,
             index_count: 0,
             name: String::from_str(name).unwrap(),
         })
@@ -199,77 +196,66 @@ impl LveModel {
     }
 
     pub unsafe fn bind(&self, device: &Device, command_buffer: vk::CommandBuffer) {
-        let buffers = [self.vertex_buffer];
-        let offsets = [0 as u64];
-        device.cmd_bind_vertex_buffers(command_buffer, 0, &buffers, &offsets);
+        self.vertex_buffer.bind_vertex(command_buffer);
 
         if self.has_index_buffer {
-            device.cmd_bind_index_buffer(command_buffer, self.index_buffer, 0, vk::IndexType::UINT32);
+            //device.cmd_bind_index_buffer(command_buffer, self.index_buffer, 0, vk::IndexType::UINT32);
+            self.index_buffer.bind_index(command_buffer, vk::IndexType::UINT32);
         }
     }
 
-    fn create_vertex_buffers(lve_device: &Rc<LveDevice>, vertices: &Vec<Vertex>) -> (vk::Buffer, vk::DeviceMemory, u32) {
+    fn create_vertex_buffers(lve_device: &Rc<LveDevice>, vertices: &Vec<Vertex>) -> (LveBuffer<Vertex>, u32) {
         let vertex_count = vertices.len();
         assert!(vertex_count >= 3, "Vertex count must be at least 3");
 
         let buffer_size: vk::DeviceSize = (size_of::<Vertex>() * vertex_count) as u64;
 
-        let (staging_buffer, staging_buffer_memory) = lve_device.create_buffer(
-            buffer_size,
-            vk::BufferUsageFlags::TRANSFER_SRC,
-            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT, // Accessible from the host (cpu)
+        let mut staging_buffer = LveBuffer::new(
+            lve_device.clone(),
+            vertex_count,
+            ash::vk::BufferUsageFlags::TRANSFER_SRC,
+            ash::vk::MemoryPropertyFlags::HOST_VISIBLE | ash::vk::MemoryPropertyFlags::HOST_COHERENT,
         );
 
-        unsafe {
-            let data_ptr = lve_device
-                .device
-                .map_memory(
-                    staging_buffer_memory,
-                    0,
-                    buffer_size,
-                    vk::MemoryMapFlags::empty(),
-                )
-                .map_err(|e| log::error!("Unable to map vertex buffer memory: {}", e))
-                .unwrap();
+        staging_buffer.map(0);
+        staging_buffer.write_to_buffer(vertices);
 
-            let mut align =
-                ash::util::Align::new(data_ptr, std::mem::align_of::<u32>() as u64, buffer_size);
-
-            align.copy_from_slice(vertices);
-
-            lve_device.device.unmap_memory(staging_buffer_memory);
-        };
-
-        let (vertex_buffer, vertex_buffer_memory) = lve_device.create_buffer(
-            buffer_size,
-            vk::BufferUsageFlags::VERTEX_BUFFER | vk::BufferUsageFlags::TRANSFER_DST,
-            vk::MemoryPropertyFlags::DEVICE_LOCAL,
+        let vertex_buffer = LveBuffer::new(
+            lve_device.clone(),
+            vertex_count,
+            ash::vk::BufferUsageFlags::VERTEX_BUFFER | ash::vk::BufferUsageFlags::TRANSFER_DST,
+            ash::vk::MemoryPropertyFlags::DEVICE_LOCAL,
         );
 
-        lve_device.copy_buffer(staging_buffer, vertex_buffer, buffer_size);
+        lve_device.copy_buffer(staging_buffer.buffer, vertex_buffer.buffer, buffer_size);
 
-        unsafe {
-            lve_device.device.destroy_buffer(staging_buffer, None);
-            lve_device.device.free_memory(staging_buffer_memory, None);
-        }
-
-        (vertex_buffer, vertex_buffer_memory, vertex_count as u32)
+        (vertex_buffer, vertex_count as u32)
     }
 
-    fn create_index_buffers(lve_device: &Rc<LveDevice>, indices: &Vec<u32>) -> (bool, vk::Buffer, vk::DeviceMemory, u32) {
+    fn create_index_buffers(lve_device: &Rc<LveDevice>, indices: &Vec<u32>) -> (bool, LveBuffer<u32>, u32) {
         let index_count = indices.len();
         let has_index_buffer = index_count > 0;
 
         if !has_index_buffer {
-            let index_buffer = vk::Buffer::null();
-            let index_buffer_memory = vk::DeviceMemory::null();
-            return (has_index_buffer, index_buffer, index_buffer_memory, 0);
+            let index_buffer = LveBuffer::null(lve_device.clone());
+            //let index_buffer_memory = vk::DeviceMemory::null();
+            return (has_index_buffer, index_buffer, 0);
         }
 
         let buffer_size: vk::DeviceSize = (size_of::<u32>() * index_count) as u64;
 
+        let mut staging_buffer = LveBuffer::new(
+            lve_device.clone(),
+            index_count,
+            ash::vk::BufferUsageFlags::TRANSFER_SRC,
+            ash::vk::MemoryPropertyFlags::HOST_VISIBLE | ash::vk::MemoryPropertyFlags::HOST_COHERENT,
+        );
 
-        let (staging_buffer, staging_buffer_memory) = lve_device.create_buffer(
+        staging_buffer.map(0);
+        staging_buffer.write_to_buffer(indices);
+
+
+        /*let (staging_buffer, staging_buffer_memory) = lve_device.create_buffer(
             buffer_size,
             vk::BufferUsageFlags::TRANSFER_SRC,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT, // Accessible from the host (cpu)
@@ -298,20 +284,27 @@ impl LveModel {
             buffer_size,
             vk::BufferUsageFlags::INDEX_BUFFER | vk::BufferUsageFlags::TRANSFER_DST,
             vk::MemoryPropertyFlags::DEVICE_LOCAL, // Accessible from the host (cpu)
+        );*/
+
+        let index_buffer = LveBuffer::new(
+            lve_device.clone(),
+            index_count,
+            ash::vk::BufferUsageFlags::INDEX_BUFFER | ash::vk::BufferUsageFlags::TRANSFER_DST,
+            ash::vk::MemoryPropertyFlags::DEVICE_LOCAL,
         );
 
-        lve_device.copy_buffer(staging_buffer, index_buffer, buffer_size);
+        lve_device.copy_buffer(staging_buffer.buffer, index_buffer.buffer, buffer_size);
 
-        unsafe {
+        /*unsafe {
             lve_device.device.destroy_buffer(staging_buffer, None);
             lve_device.device.free_memory(staging_buffer_memory, None);
-        }
+        }*/
 
-        (has_index_buffer, index_buffer, index_buffer_memory, index_count as u32)
+        (has_index_buffer, index_buffer, index_count as u32)
     }
 }
 
-impl Drop for LveModel {
+/*impl Drop for LveModel {
     fn drop(&mut self) {
         log::debug!("Dropping Model: {}", self.name);
         unsafe {
@@ -324,4 +317,4 @@ impl Drop for LveModel {
             }
         }
     }
-}
+}*/

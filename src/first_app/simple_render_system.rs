@@ -1,6 +1,7 @@
 use super::lve_device::*;
 use super::lve_game_object::*;
 use super::lve_pipeline::*;
+use super::lve_frame_info::*;
 use super::lve_camera::*;
 
 use ash::{vk, Device};
@@ -18,8 +19,8 @@ type Transform = Align16<na::Matrix4<f32>>;
 
 #[derive(Debug)]
 pub struct SimplePushConstantData {
-    transform: Transform,
-    color: Color,
+    model_matrix: Transform,
+    normal_matrix: Transform
 }
 
 impl SimplePushConstantData {
@@ -46,8 +47,8 @@ pub struct SimpleRenderSystem {
 }
 
 impl SimpleRenderSystem {
-    pub fn new(lve_device: Rc<LveDevice>, render_pass: &vk::RenderPass) -> Self {
-        let pipeline_layout = Self::create_pipeline_layout(&lve_device.device);
+    pub fn new(lve_device: Rc<LveDevice>, render_pass: &vk::RenderPass, global_set_layout: &[ash::vk::DescriptorSetLayout]) -> Self {
+        let pipeline_layout = Self::create_pipeline_layout(&lve_device.device, global_set_layout);
 
         let lve_pipeline = Self::create_pipeline(Rc::clone(&lve_device), render_pass, &pipeline_layout);
 
@@ -80,7 +81,7 @@ impl SimpleRenderSystem {
         )
     }
 
-    fn create_pipeline_layout(device: &Device) -> vk::PipelineLayout {
+    fn create_pipeline_layout(device: &Device, global_set_layout: &[ash::vk::DescriptorSetLayout]) -> vk::PipelineLayout {
         let push_constant_range = vk::PushConstantRange::builder()
             .stage_flags(vk::ShaderStageFlags::VERTEX)
             .offset(0)
@@ -88,7 +89,7 @@ impl SimpleRenderSystem {
             .build();
 
         let pipeline_layout_info = vk::PipelineLayoutCreateInfo::builder()
-            // .set_layouts(&[vk::DescriptorSetLayout::null()])
+            .set_layouts(global_set_layout)
             .push_constant_ranges(&[push_constant_range])
             .build();
 
@@ -102,34 +103,43 @@ impl SimpleRenderSystem {
 
     pub fn render_game_objects(
         &mut self,
-        command_buffer: vk::CommandBuffer,
+        frame_info: &FrameInfo,
         game_objects: &mut Vec<LveGameObject>,
-        camera: &LveCamera,
     ) {
-        unsafe { self.lve_pipeline.bind(&self.lve_device.device, command_buffer) };
+        unsafe { 
+            self.lve_pipeline.bind(&self.lve_device.device, frame_info.command_buffer);
+            self.lve_device.device.cmd_bind_descriptor_sets(
+                frame_info.command_buffer,
+                ash::vk::PipelineBindPoint::GRAPHICS,
+                self.pipeline_layout,
+                0,
+                &[frame_info.global_descriptor_set],
+                &[],
+            );
+        };
 
-        let projection_view = camera.projection_matrix * camera.view_matrix;
+        let projection_view = frame_info.camera.projection_matrix * frame_info.camera.view_matrix;
 
         for game_obj in game_objects.iter_mut() {
 
             let push = SimplePushConstantData {
-                transform: Align16(projection_view * game_obj.transform.mat4()),
-                color: Align16(game_obj.color),
+                model_matrix: Align16(game_obj.transform.mat4()),
+                normal_matrix: Align16(game_obj.transform.normal_matrix())
             };
 
             unsafe {
                 let push_ptr = push.as_bytes();
 
                 self.lve_device.device.cmd_push_constants(
-                    command_buffer,
+                    frame_info.command_buffer,
                     self.pipeline_layout,
                     vk::ShaderStageFlags::VERTEX,
                     0,
                     push_ptr,
                 );
 
-                game_obj.model.bind(&self.lve_device.device, command_buffer);
-                game_obj.model.draw(&self.lve_device.device, command_buffer);
+                game_obj.model.bind(&self.lve_device.device, frame_info.command_buffer);
+                game_obj.model.draw(&self.lve_device.device, frame_info.command_buffer);
             }
         }
     }

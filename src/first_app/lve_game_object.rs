@@ -26,6 +26,24 @@ impl TransformComponent {
                     0.0                                     , 0.0                                     , 0.0                      , 1.0;
                 )
     }
+
+    pub fn normal_matrix(&self) -> na::Matrix4<f32> {
+
+        let c3 = self.rotation[2].cos();
+        let s3 = self.rotation[2].sin();
+        let c2 = self.rotation[0].cos();
+        let s2 = self.rotation[0].sin();
+        let c1 = self.rotation[1].cos();
+        let s1 = self.rotation[1].sin();
+
+        let inv_scale = na::vector!(1.0 / self.scale[0], 1.0 / self.scale[1], 1.0 / self.scale[2]);
+
+        na::matrix!(inv_scale[0] * (c1 * c3 + s1 * s2 * s3), inv_scale[1] * (c3 * s1 * s2 - c1 * s3), inv_scale[2] * (c2 * s1), 0.0;
+                    inv_scale[0] * (c2 * s3)               , inv_scale[1] * (c2 * c3)               , inv_scale[2] * (-s2)    , 0.0;
+                    inv_scale[0] * (c1 * s2 * s3 - c3 * s1), inv_scale[1] * (c1 * c3 * s2 + s1 * s3), inv_scale[2] * (c1 * c2), 0.0;
+                    0.0                                    , 0.0                                    , 0.0                     , 0.0
+        )
+    }
 }
 
 pub struct LveGameObject {
