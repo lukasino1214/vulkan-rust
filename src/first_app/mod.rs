@@ -69,10 +69,16 @@ impl VulkanApp {
 
         let game_objects = Self::load_game_objects(&lve_device);
 
+        let camera_transform = Some(TransformComponent {
+            translation: na::vector![0.0, -0.20, -1.0],
+            scale: na::vector![0.5, 0.5, 0.5],
+            rotation: na::vector![0.0, 0.0, 0.0],
+        });
+
         let viewer_object = LveGameObject::new(
             LveModel::new_null(Rc::clone(&lve_device), "camera"),
             None,
-            None,
+            camera_transform,
         );
 
         let camera_controller = KeyboardMovementController::new(Some(100.0), Some(100.0));
@@ -157,7 +163,7 @@ impl VulkanApp {
                 self.viewer_object.transform.translation,
                 self.viewer_object.transform.rotation,
             )
-            .set_perspective_projection(50_f32.to_radians(), aspect, 0.1, 10.0)
+            .set_perspective_projection(50_f32.to_radians(), aspect, 0.001, 1000.0)
             // .set_view_direction(na::Vector3::zeros(), na::vector![0.5, 0.0, 1.0], None)
             // .set_view_target(
             //     na::vector![-1.0, -2.0, 2.0],
@@ -186,7 +192,10 @@ impl VulkanApp {
                 let ubo = GlobalUbo {
                     projection_matrix: frame_info.camera.projection_matrix,
                     view_matrix: frame_info.camera.view_matrix,
-                    light_direction: na::vector!(1.0, -3.0, -1.0).normalize()
+                    ambient_light_color: na::vector![1.0, 1.0, 1.0, 0.02],
+                    light_position: na::vector![-1.0, -1.0, -1.0],
+                    padding: 0,
+                    light_color: na::vector![1.0, 1.0, 1.0, 1.0]
                 };
 
                 self.ubo_buffers[frame_index].write_to_buffer(&[ubo]);
@@ -227,15 +236,23 @@ impl VulkanApp {
     }
 
     fn load_game_objects(lve_device: &Rc<LveDevice>) -> Vec<LveGameObject> {
-        let lve_model = LveModel::new_from_file(Rc::clone(lve_device), "cube", "./models/smooth_vase.obj");
+        let vase = LveModel::new_from_file(Rc::clone(lve_device), "cube", "./models/smooth_vase.obj");
 
-        let transform = Some(TransformComponent {
-            translation: na::vector![0.0, 0.0, 2.5],
+        let vase_transform = Some(TransformComponent {
+            translation: na::vector![0.0, 0.0, 0.0],
             scale: na::vector![0.5, 0.5, 0.5],
             rotation: na::vector![0.0, 0.0, 0.0],
         });
 
-        vec![LveGameObject::new(lve_model, None, transform)]
+        let floor = LveModel::new_from_file(Rc::clone(lve_device), "floor", "./models/floor.obj");
+
+        let floor_transform = Some(TransformComponent {
+            translation: na::vector![0.0, 0.5, 0.0],
+            scale: na::vector![2.0, 2.0, 2.0],
+            rotation: na::vector![0.0, 0.0, 0.0],
+        });
+
+        vec![LveGameObject::new(vase, None, vase_transform), LveGameObject::new(floor, None, floor_transform)]
     }
 }
 
