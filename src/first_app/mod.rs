@@ -11,7 +11,9 @@ mod lve_buffer;
 mod simple_render_system;
 mod point_render_system;
 mod lve_descriptor_set;
+mod lve_image;
 
+use ash::vk::{DescriptorImageInfo, self};
 use keyboard_movement_controller::*;
 use lve_camera::*;
 use lve_device::*;
@@ -22,6 +24,7 @@ use simple_render_system::*;
 use point_render_system::*;
 use lve_frame_info::*;
 use lve_descriptor_set::*;
+use lve_image::*;
 
 use winit::{
     dpi::{LogicalSize},
@@ -59,7 +62,10 @@ pub struct VulkanApp {
     global_pool: Rc<LveDescriptorPool>,
     global_set_layout: Rc<LveDescriptorSetLayout>,
     global_descriptor_sets: Vec<ash::vk::DescriptorSet>,
-    ubo_buffers: Vec<LveBuffer<GlobalUbo>>
+    ubo_buffers: Vec<LveBuffer<GlobalUbo>>,
+    image_set_layout: Rc<LveDescriptorSetLayout>,
+    image: LveImage,
+    image_descriptor_set: ash::vk::DescriptorSet
 }
 
 impl VulkanApp {
@@ -87,8 +93,10 @@ impl VulkanApp {
         let camera_controller = KeyboardMovementController::new(Some(100.0), Some(100.0));
 
         let global_pool = LveDescriptorPool::new(Rc::clone(&lve_device))
-            .set_max_sets(MAX_FRAMES_IN_FLIGHT as u32)
+            .set_max_sets(1000 as u32)
             .add_pool_size(ash::vk::DescriptorType::UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT as u32)
+            .add_pool_size(ash::vk::DescriptorType::SAMPLED_IMAGE, MAX_FRAMES_IN_FLIGHT as u32)
+            .add_pool_size(ash::vk::DescriptorType::STORAGE_BUFFER, MAX_FRAMES_IN_FLIGHT as u32)
             .build().unwrap();
 
         let mut ubo_buffers = Vec::with_capacity(MAX_FRAMES_IN_FLIGHT);
@@ -119,10 +127,26 @@ impl VulkanApp {
             global_descriptor_sets.push(set);
         }
 
+        let image_set_layout = LveDescriptorSetLayout::new(Rc::clone(&lve_device))
+            .add_binding(0, ash::vk::DescriptorType::COMBINED_IMAGE_SAMPLER, ash::vk::ShaderStageFlags::ALL_GRAPHICS, 1)
+            .build().unwrap();
+
+        let image = LveImage::new(Rc::clone(&lve_device), "./textures/poggers.png");
+
+        let image_info = vk::DescriptorImageInfo::builder()
+            .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+            .image_view(image.image_view)
+            .sampler(image.image_sampler)
+            .build();
+
+        let image_descriptor_set = LveDescriptorSetWriter::new(image_set_layout.clone(), global_pool.clone())
+                .write_image(0, &[image_info])
+                .build().unwrap();
+
         let simple_render_system = SimpleRenderSystem::new(
             Rc::clone(&lve_device),
             &lve_renderer.get_swapchain_render_pass(),
-            &[global_set_layout.layout]
+            &[global_set_layout.layout, image_set_layout.layout]
         );
 
         let point_render_system = PointRenderSystem::new(
@@ -130,6 +154,8 @@ impl VulkanApp {
             &lve_renderer.get_swapchain_render_pass(),
             &[global_set_layout.layout]
         );
+
+    
 
         (
             Self {
@@ -143,7 +169,10 @@ impl VulkanApp {
                 global_pool,
                 global_set_layout,
                 global_descriptor_sets,
-                ubo_buffers
+                ubo_buffers,
+                image_set_layout,
+                image,
+                image_descriptor_set
             },
             event_loop,
         )
@@ -173,7 +202,7 @@ impl VulkanApp {
                 self.viewer_object.transform.translation,
                 self.viewer_object.transform.rotation,
             )
-            .set_perspective_projection(50_f32.to_radians(), aspect, 0.001, 1000.0)
+            .set_perspective_projection(70_f32.to_radians(), aspect, 0.001, 1000.0)
             // .set_view_direction(na::Vector3::zeros(), na::vector![0.5, 0.0, 1.0], None)
             // .set_view_target(
             //     na::vector![-1.0, -2.0, 2.0],
@@ -197,6 +226,7 @@ impl VulkanApp {
                     command_buffer,
                     camera,
                     global_descriptor_set: self.global_descriptor_sets[frame_index],
+                    image_descriptor_set: self.image_descriptor_set,
                     game_objects: &self.game_objects
                 };
 
@@ -223,10 +253,12 @@ impl VulkanApp {
             None => {}
         }
 
-        self.lve_renderer.end_frame();
+        self.lve_renderer.end_frame(&self.window);
     }
 
     pub fn resize(&mut self) {
+        println!("recreate!");
+
         self.lve_renderer.recreate_swapchain(&self.window)
     }
 
@@ -275,15 +307,6 @@ impl VulkanApp {
             na::vector![0.1, 1.0, 1.0],
             na::vector![1.0, 1.0, 1.0],
         ];
-
-        /*for (i, color) in light_colors.iter().enumerate() {
-            let mut point_light = LveGameObject::make_point_light(0.2, 0.1, *color);
-
-            let rotate_light = glam::Mat4::from_axis_angle(na::vector![0.0, -1.0, 0.0], i as f32 * (3.14 * 2.0) / light_colors.len() as f32);
-            let xyz = rotate_light * glam::vec4(-1.0, -1.0, -1.0, 1.0);
-            point_light.transform.translation = glam::vec3(xyz.x, xyz.y + 1.0, xyz.z - 5.0);
-            game_objects.insert(point_light.id, point_light);
-        }*/
 
         game_objects.push(LveGameObject::make_point_light(0.1, 0.05, light_colors[0]));
         game_objects[2].transform.translation = na::vector![0.0, -0.4, 0.0];

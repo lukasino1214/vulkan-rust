@@ -141,7 +141,6 @@ impl Vertex {
 }
 
 pub struct LveModel {
-    lve_device: Rc<LveDevice>,
     vertex_buffer: LveBuffer<Vertex>,
     vertex_count: u32,
     has_index_buffer: bool,
@@ -156,7 +155,6 @@ impl LveModel {
         let (has_index_buffer, index_buffer, index_count) = Self::create_index_buffers(&lve_device, &builder.indices);
         
         Rc::new(Self {
-            lve_device,
             vertex_buffer,
             vertex_count,
             has_index_buffer,
@@ -177,7 +175,6 @@ impl LveModel {
         let vertex_buffer = LveBuffer::null(Rc::clone(&lve_device));
         let index_buffer = LveBuffer::null(Rc::clone(&lve_device));
         Rc::new(Self {
-            lve_device,
             vertex_buffer,
             vertex_count: 0,
             has_index_buffer: false,
@@ -195,7 +192,7 @@ impl LveModel {
         }
     }
 
-    pub unsafe fn bind(&self, device: &Device, command_buffer: vk::CommandBuffer) {
+    pub unsafe fn bind(&self, command_buffer: vk::CommandBuffer) {
         self.vertex_buffer.bind_vertex(command_buffer);
 
         if self.has_index_buffer {

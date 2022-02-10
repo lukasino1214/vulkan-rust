@@ -22,12 +22,12 @@ pub struct GlobalUbo {
     pub num_lights: u32,
 }
 
-#[feature(in_band_lifetimes)]
 pub struct FrameInfo<'a> {
     pub frame_index: usize,
     pub frame_time: f32,
     pub command_buffer: ash::vk::CommandBuffer,
     pub camera: LveCamera,
     pub global_descriptor_set: ash::vk::DescriptorSet,
+    pub image_descriptor_set: ash::vk::DescriptorSet,
     pub game_objects: &'a Vec<LveGameObject>
 }

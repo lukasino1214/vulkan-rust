@@ -165,8 +165,11 @@ impl LveDescriptorSetWriter {
 
     pub fn build(&mut self) -> Option<ash::vk::DescriptorSet> {
         let result = self.pool.allocate_descriptor(&[self.set_layout.layout]);
+        //println!("error: {:?}", result);
+        //result.map_err(|e| log::error!("Unable to read file: {}", e));
 
         if result.is_err() {
+            //println!("error: {:?}", result);
             return None;
         }
 

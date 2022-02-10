@@ -44,7 +44,6 @@ where
 
     pub fn null(lve_device: Rc<LveDevice>) -> Self {
         let size = 0;
-        let byte_len = std::mem::size_of::<T>() * size;
 
         let buffer = ash::vk::Buffer::null();
         let memory = ash::vk::DeviceMemory::null();

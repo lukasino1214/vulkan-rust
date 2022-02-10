@@ -72,7 +72,7 @@ impl LveRenderer {
 
         match result {
             Err(vk::Result::ERROR_OUT_OF_DATE_KHR) => {
-                log::error!("Out of date KHR!");
+                //log::error!("Out of date KHR!");
                 self.recreate_swapchain(window);
                 return None;
             }
@@ -109,7 +109,7 @@ impl LveRenderer {
         return Some(command_buffer);
     }
 
-    pub fn end_frame(&mut self) {
+    pub fn end_frame(&mut self, window: &Window) {
         assert!(
             self.is_frame_started,
             "Can't call end_frame while frame is not in progress"
@@ -124,7 +124,7 @@ impl LveRenderer {
                 .unwrap()
         };
 
-        let _result = self
+        let result = self
             .lve_swapchain
             .submit_command_buffers(
                 &self.lve_device.device,
@@ -132,9 +132,20 @@ impl LveRenderer {
                 &self.lve_device.present_queue,
                 command_buffer,
                 self.current_image_index,
-            )
-            .map_err(|e| log::error!("Unable to present swapchain image: {}", e))
-            .unwrap();
+        );
+
+        match result {
+            Err(vk::Result::ERROR_OUT_OF_DATE_KHR) => {
+                log::error!("Out of date KHR!");
+                self.recreate_swapchain(window);
+            }
+            Err(_) => {
+                log::error!("Unable to acquire next image");
+                panic!("Unable to handle this error")
+            }
+            Ok(_) => {},
+        }
+
 
         unsafe {
             self.lve_device

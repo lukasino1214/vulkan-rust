@@ -1,8 +1,6 @@
 use super::lve_device::*;
-use super::lve_game_object::*;
 use super::lve_pipeline::*;
 use super::lve_frame_info::*;
-use super::lve_camera::*;
 
 use ash::{vk, Device};
 
@@ -13,14 +11,9 @@ extern crate nalgebra as na;
 #[repr(align(16))]
 #[derive(Debug, Clone, Copy)]
 pub struct Align16<T>(pub T);
-
-type Color = Align16<na::Vector3<f32>>;
-type Transform = Align16<na::Matrix4<f32>>;
-
-#[derive(Debug)]
 pub struct SimplePushConstantData {
-    model_matrix: Transform,
-    normal_matrix: Transform
+    model_matrix: Align16<na::Matrix4<f32>>,
+    normal_matrix: Align16<na::Matrix4<f32>>
 }
 
 impl SimplePushConstantData {
@@ -104,6 +97,7 @@ impl SimpleRenderSystem {
     pub fn render_game_objects(
         &mut self,
         frame_info: &FrameInfo
+        //, image_set: ash::vk::DescriptorSet
     ) {
         unsafe { 
             self.lve_pipeline.bind(&self.lve_device.device, frame_info.command_buffer);
@@ -112,12 +106,10 @@ impl SimpleRenderSystem {
                 ash::vk::PipelineBindPoint::GRAPHICS,
                 self.pipeline_layout,
                 0,
-                &[frame_info.global_descriptor_set],
+                &[frame_info.global_descriptor_set, frame_info.image_descriptor_set],
                 &[],
             );
         };
-
-        let projection_view = frame_info.camera.projection_matrix * frame_info.camera.view_matrix;
 
         for game_obj in frame_info.game_objects.iter() {
 
@@ -139,7 +131,7 @@ impl SimpleRenderSystem {
 
                 match &game_obj.model {
                     Some(_) => {
-                        game_obj.model.as_ref().unwrap().bind(&self.lve_device.device, frame_info.command_buffer);
+                        game_obj.model.as_ref().unwrap().bind(frame_info.command_buffer);
                         game_obj.model.as_ref().unwrap().draw(&self.lve_device.device, frame_info.command_buffer);
                     }
                     _ => (),
