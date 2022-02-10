@@ -22,9 +22,12 @@ fn main() {
     let mut keys_pressed: Vec<VirtualKeyCode> = Vec::new();
 
     event_loop.run(move |event, _, control_flow| {
+        
         *control_flow = ControlFlow::Poll;
         
         let app = &mut vulkan_app;
+
+        app.platform.handle_event(app.imgui.io_mut(), &app.window, &event);
 
         match event {
             Event::WindowEvent {

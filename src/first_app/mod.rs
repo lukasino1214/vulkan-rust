@@ -36,6 +36,10 @@ use lve_swapchain::*;
 
 use winit::event::VirtualKeyCode;
 
+use imgui::*;
+use imgui_winit_support::*;
+use imgui_rs_vulkan_renderer::*;
+
 use std::{rc::Rc};
 
 extern crate nalgebra as na;
@@ -65,7 +69,12 @@ pub struct VulkanApp {
     ubo_buffers: Vec<LveBuffer<GlobalUbo>>,
     image_set_layout: Rc<LveDescriptorSetLayout>,
     image: LveImage,
-    image_descriptor_set: ash::vk::DescriptorSet
+    image_descriptor_set: ash::vk::DescriptorSet,
+    pub imgui: Context,
+    font_size: f32,
+    pub platform: WinitPlatform,
+    renderer: Renderer,
+    lve_device: Rc<LveDevice>
 }
 
 impl VulkanApp {
@@ -155,6 +164,32 @@ impl VulkanApp {
             &[global_set_layout.layout]
         );
 
+        let mut imgui = Context::create();
+        imgui.set_ini_filename(None);
+
+        let mut platform = WinitPlatform::init(&mut imgui);
+
+        let hidpi_factor = platform.hidpi_factor();
+        let font_size = (hidpi_factor) as f32;
+        let monitor_size = window.current_monitor().unwrap().size();
+        imgui.io_mut().display_size = [monitor_size.width as f32, monitor_size.height as f32];
+        imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
+        platform.attach_window(imgui.io_mut(), &window, HiDpiMode::Rounded);
+
+        let renderer = Renderer::with_default_allocator(
+            &lve_device.instance,
+            lve_device.physical_device,
+            lve_device.device.clone(),
+            lve_device.graphics_queue,
+            lve_device.command_pool,
+            lve_renderer.get_swapchain_render_pass(),
+            &mut imgui,
+            Some(Options {
+                in_flight_frames: 2,
+                ..Default::default()
+            }),
+        ).unwrap();
+
     
 
         (
@@ -172,7 +207,12 @@ impl VulkanApp {
                 ubo_buffers,
                 image_set_layout,
                 image,
-                image_descriptor_set
+                image_descriptor_set,
+                imgui,
+                font_size,
+                platform,
+                renderer,
+                lve_device
             },
             event_loop,
         )
@@ -244,10 +284,34 @@ impl VulkanApp {
                 self.ubo_buffers[frame_index].write_to_buffer(&[ubo]);
                 //self.ubo_buffers[frame_index].flush();
 
-                self.lve_renderer
-                    .begin_swapchain_render_pass(command_buffer);
+                self.lve_renderer.begin_swapchain_render_pass(command_buffer);
                 self.simple_render_system.render_game_objects(&frame_info);
                 self.point_render_system.render(&frame_info);
+
+
+
+                self.platform.prepare_frame(self.imgui.io_mut(), &self.window).expect("Failed to prepare frame");
+                let ui = self.imgui.frame();
+
+                imgui::Window::new("test")
+                    .size([300.0, 100.0], Condition::FirstUseEver)
+                    .build(&ui, || {
+                        ui.text_wrapped("Hello world!");
+                        ui.text_wrapped("こんにちは世界！");
+
+                        ui.button("This...is...imgui-rs!");
+                        ui.separator();
+                        let mouse_pos = ui.io().mouse_pos;
+                        ui.text(format!(
+                            "Mouse Position: ({:.1},{:.1})",
+                            mouse_pos[0], mouse_pos[1]
+                        ));
+                    });
+
+                self.platform.prepare_render(&ui, &self.window);
+                let draw_data = ui.render();
+                self.renderer.cmd_draw(command_buffer, draw_data).unwrap();
+
                 self.lve_renderer.end_swapchain_render_pass(command_buffer);
             }
             None => {}
@@ -257,8 +321,6 @@ impl VulkanApp {
     }
 
     pub fn resize(&mut self) {
-        println!("recreate!");
-
         self.lve_renderer.recreate_swapchain(&self.window)
     }
 

@@ -136,7 +136,7 @@ impl LveRenderer {
 
         match result {
             Err(vk::Result::ERROR_OUT_OF_DATE_KHR) => {
-                log::error!("Out of date KHR!");
+                // log::error!("Out of date KHR!");
                 self.recreate_swapchain(window);
             }
             Err(_) => {

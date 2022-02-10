@@ -16,4 +16,6 @@ tobj = "3.2.0"
 shaderc = "0.7.4"
 memoffset = "0.6.5"
 image = "0.24.0"
+imgui = "0.8.2"
+imgui-winit-support = { version = "0.8.2", default-features = false, features = ["winit-26"] }
 imgui-rs-vulkan-renderer = "1.1.1"

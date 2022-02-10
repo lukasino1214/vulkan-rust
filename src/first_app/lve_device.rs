@@ -73,7 +73,7 @@ pub struct LveDevice {
     debug_messenger: Option<(DebugUtils, vk::DebugUtilsMessengerEXT)>,
     surface: Surface,
     pub surface_khr: vk::SurfaceKHR,
-    physical_device: vk::PhysicalDevice,
+    pub physical_device: vk::PhysicalDevice,
     _properties: vk::PhysicalDeviceProperties,
     pub device: Device,
     pub command_pool: vk::CommandPool,
