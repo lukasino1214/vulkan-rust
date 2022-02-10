@@ -95,7 +95,7 @@ impl LvePipeline {
             .build();
 
         let color_blend_attachment = Rc::new(vk::PipelineColorBlendAttachmentState::builder()
-            .color_write_mask(vk::ColorComponentFlags::all())
+            .color_write_mask(vk::ColorComponentFlags::RGBA)
             .blend_enable(false)
             .src_color_blend_factor(vk::BlendFactor::ONE) // optional
             .dst_color_blend_factor(vk::BlendFactor::ZERO) // optional

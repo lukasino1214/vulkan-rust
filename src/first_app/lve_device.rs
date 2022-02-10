@@ -83,11 +83,7 @@ pub struct LveDevice {
 
 impl LveDevice {
     pub fn new(window: &Window) -> Rc<Self> {
-        let entry = unsafe {
-            Entry::new()
-                .map_err(|e| log::error!("Failed to create entry: {}", e))
-                .unwrap()
-        };
+        let entry = Entry::linked();
         let instance = Self::create_instance(&entry);
         let debug_messenger = Self::setup_debug_messenger(&entry, &instance);
         let (surface, surface_khr) = Self::create_surface(&entry, &instance, window);
@@ -424,9 +420,8 @@ impl LveDevice {
         }
 
         let create_info = vk::DebugUtilsMessengerCreateInfoEXT::builder()
-            .flags(vk::DebugUtilsMessengerCreateFlagsEXT::all())
-            .message_severity(vk::DebugUtilsMessageSeverityFlagsEXT::all())
-            .message_type(vk::DebugUtilsMessageTypeFlagsEXT::all())
+            .message_severity(vk::DebugUtilsMessageSeverityFlagsEXT::WARNING | vk::DebugUtilsMessageSeverityFlagsEXT::VERBOSE | vk::DebugUtilsMessageSeverityFlagsEXT::INFO | vk::DebugUtilsMessageSeverityFlagsEXT::ERROR)
+            .message_type(vk::DebugUtilsMessageTypeFlagsEXT::GENERAL | vk::DebugUtilsMessageTypeFlagsEXT::PERFORMANCE | vk::DebugUtilsMessageTypeFlagsEXT::VALIDATION)
             .pfn_user_callback(Some(vulkan_debug_callback));
 
         let debug_report = DebugUtils::new(entry, instance);
