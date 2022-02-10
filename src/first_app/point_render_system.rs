@@ -94,7 +94,7 @@ impl PointRenderSystem {
 
         for game_obj in frame_info.game_objects.iter() {
             match &game_obj.point_light {
-                Some(PointLightComponent) => {
+                Some(_point_light_component) => {
                     ubo.point_lights[light_index].position = na::vector![game_obj.transform.translation.x, game_obj.transform.translation.y, game_obj.transform.translation.z, 1.0];
                     ubo.point_lights[light_index].color = na::vector![game_obj.color.x, game_obj.color.y, game_obj.color.z, game_obj.point_light.as_ref().unwrap().light_intensity];
                     ubo.num_lights += 1;

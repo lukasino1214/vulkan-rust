@@ -5,7 +5,6 @@ use ash::{vk, Device};
 
 use std::mem::size_of;
 use std::rc::Rc;
-use std::str::FromStr;
 
 extern crate nalgebra as na;
 
@@ -146,11 +145,10 @@ pub struct LveModel {
     has_index_buffer: bool,
     index_buffer: LveBuffer<u32>,
     index_count: u32,
-    name: String,
 }
 
 impl LveModel {
-    pub fn new(lve_device: Rc<LveDevice>, builder: &Builder, name: &str) -> Rc<Self> {
+    pub fn new(lve_device: Rc<LveDevice>, builder: &Builder) -> Rc<Self> {
         let (vertex_buffer, vertex_count) = Self::create_vertex_buffers(&lve_device, &builder.vertices);
         let (has_index_buffer, index_buffer, index_count) = Self::create_index_buffers(&lve_device, &builder.indices);
         
@@ -160,18 +158,18 @@ impl LveModel {
             has_index_buffer,
             index_buffer,
             index_count,
-            name: String::from_str(name).unwrap(),
         })
     }
 
-    pub fn new_from_file(lve_device: Rc<LveDevice>, name: &str, file_path: &str) -> Rc<Self> {
+    pub fn new_from_file(lve_device: Rc<LveDevice>, file_path: &str) -> Rc<Self> {
         let mut builder = Builder::new();
         builder.load_from_file(file_path);
 
-        LveModel::new(lve_device, &builder, name)
+        LveModel::new(lve_device, &builder)
     }
 
-    pub fn new_null(lve_device: Rc<LveDevice>, name: &str) -> Rc<Self> {
+    #[allow(dead_code)]
+    pub fn new_null(lve_device: Rc<LveDevice>) -> Rc<Self> {
         let vertex_buffer = LveBuffer::null(Rc::clone(&lve_device));
         let index_buffer = LveBuffer::null(Rc::clone(&lve_device));
         Rc::new(Self {
@@ -180,7 +178,6 @@ impl LveModel {
             has_index_buffer: false,
             index_buffer,
             index_count: 0,
-            name: String::from_str(name).unwrap(),
         })
     }
 
@@ -251,38 +248,6 @@ impl LveModel {
         staging_buffer.map(0);
         staging_buffer.write_to_buffer(indices);
 
-
-        /*let (staging_buffer, staging_buffer_memory) = lve_device.create_buffer(
-            buffer_size,
-            vk::BufferUsageFlags::TRANSFER_SRC,
-            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT, // Accessible from the host (cpu)
-        );
-
-        unsafe {
-            let data_ptr = lve_device
-                .device
-                .map_memory(
-                    staging_buffer_memory,
-                    0,
-                    buffer_size,
-                    vk::MemoryMapFlags::empty(),
-                )
-                .map_err(|e| log::error!("Unable to map vertex buffer memory: {}", e))
-                .unwrap();
-
-            let mut align = ash::util::Align::new(data_ptr, std::mem::align_of::<u32>() as u64, buffer_size);
-
-            align.copy_from_slice(indices);
-
-            lve_device.device.unmap_memory(staging_buffer_memory);
-        };
-
-        let (index_buffer, index_buffer_memory) = lve_device.create_buffer(
-            buffer_size,
-            vk::BufferUsageFlags::INDEX_BUFFER | vk::BufferUsageFlags::TRANSFER_DST,
-            vk::MemoryPropertyFlags::DEVICE_LOCAL, // Accessible from the host (cpu)
-        );*/
-
         let index_buffer = LveBuffer::new(
             lve_device.clone(),
             index_count,
@@ -292,26 +257,6 @@ impl LveModel {
 
         lve_device.copy_buffer(staging_buffer.buffer, index_buffer.buffer, buffer_size);
 
-        /*unsafe {
-            lve_device.device.destroy_buffer(staging_buffer, None);
-            lve_device.device.free_memory(staging_buffer_memory, None);
-        }*/
-
         (has_index_buffer, index_buffer, index_count as u32)
     }
 }
-
-/*impl Drop for LveModel {
-    fn drop(&mut self) {
-        log::debug!("Dropping Model: {}", self.name);
-        unsafe {
-            self.lve_device.device.destroy_buffer(self.vertex_buffer, None);
-            self.lve_device.device.free_memory(self.vertex_buffer_memory, None);
-
-            if self.has_index_buffer {
-                self.lve_device.device.destroy_buffer(self.index_buffer, None);
-                self.lve_device.device.free_memory(self.index_buffer_memory, None);
-            }
-        }
-    }
-}*/

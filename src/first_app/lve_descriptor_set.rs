@@ -230,6 +230,7 @@ impl LveDescriptorPool {
         })
     }
 
+    #[allow(dead_code)]
     pub fn free_descriptors(
         &self,
         descriptors: &Vec<ash::vk::DescriptorSet>
@@ -242,6 +243,7 @@ impl LveDescriptorPool {
         })
     }
 
+    #[allow(dead_code)]
     pub fn reset_pool(&self) -> Result<(), ash::vk::Result> {
         Ok(unsafe {
             self.lve_device.device.reset_descriptor_pool(
@@ -278,6 +280,7 @@ impl LveDescriptorPoolBuilder {
         self
     }
 
+    #[allow(dead_code)]
     pub fn set_pool_flags(
         mut self,
         flags: ash::vk::DescriptorPoolCreateFlags,

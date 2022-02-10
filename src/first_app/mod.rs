@@ -13,7 +13,6 @@ mod point_render_system;
 mod lve_descriptor_set;
 mod lve_image;
 
-use ash::vk::{DescriptorImageInfo, self};
 use keyboard_movement_controller::*;
 use lve_camera::*;
 use lve_device::*;
@@ -51,6 +50,7 @@ struct GlobalUbo {
     light_direction: na::Vector3<f32>
 }*/
 
+#[allow(dead_code)]
 pub struct VulkanApp {
     pub window: Window,
     lve_renderer: LveRenderer,
@@ -133,8 +133,8 @@ impl VulkanApp {
 
         let image = LveImage::new(Rc::clone(&lve_device), "./textures/poggers.png");
 
-        let image_info = vk::DescriptorImageInfo::builder()
-            .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+        let image_info = ash::vk::DescriptorImageInfo::builder()
+            .image_layout(ash::vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
             .image_view(image.image_view)
             .sampler(image.image_sampler)
             .build();
@@ -278,7 +278,7 @@ impl VulkanApp {
     }
 
     fn load_game_objects(lve_device: &Rc<LveDevice>) -> Vec<LveGameObject> {
-        let vase = LveModel::new_from_file(Rc::clone(lve_device), "cube", "./models/smooth_vase.obj");
+        let vase = LveModel::new_from_file(Rc::clone(lve_device), "./models/smooth_vase.obj");
 
         let vase_transform = Some(TransformComponent {
             translation: na::vector![0.0, 0.0, 0.2],
@@ -286,7 +286,7 @@ impl VulkanApp {
             rotation: na::vector![0.0, 0.0, 0.0],
         });
 
-        let floor = LveModel::new_from_file(Rc::clone(lve_device), "floor", "./models/floor.obj");
+        let floor = LveModel::new_from_file(Rc::clone(lve_device), "./models/floor.obj");
 
         let floor_transform = Some(TransformComponent {
             translation: na::vector![0.0, 0.5, 0.0],

@@ -11,6 +11,7 @@ extern crate nalgebra as na;
 #[repr(align(16))]
 #[derive(Debug, Clone, Copy)]
 pub struct Align16<T>(pub T);
+#[allow(dead_code)]
 pub struct SimplePushConstantData {
     model_matrix: Align16<na::Matrix4<f32>>,
     normal_matrix: Align16<na::Matrix4<f32>>

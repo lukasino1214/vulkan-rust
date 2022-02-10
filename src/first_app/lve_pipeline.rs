@@ -145,19 +145,6 @@ impl LvePipeline {
         }
     }
 
-    fn read_file<P: AsRef<std::path::Path>>(file_path: P) -> Vec<u32> {
-        log::debug!(
-            "Loading shader file {}",
-            file_path.as_ref().to_str().unwrap()
-        );
-        let mut file = std::fs::File::open(file_path)
-            .map_err(|e| log::error!("Unable to open file: {}", e))
-            .unwrap();
-        ash::util::read_spv(&mut file)
-            .map_err(|e| log::error!("Unable to read file: {}", e))
-            .unwrap()
-    }
-
     fn create_graphics_pipeline(
         device: &Device,
         vert_file_path: &str,

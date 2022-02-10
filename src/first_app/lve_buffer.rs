@@ -71,19 +71,19 @@ where
         }
     }
 
-    pub fn map(&mut self, element_offset: usize) -> Result<(), ash::vk::Result> {
+    pub fn map(&mut self, element_offset: usize) /*-> Result<(), ash::vk::Result>*/ {
         let size = self.capacity - element_offset;
         let mem_size = (std::mem::size_of::<T>() * size) as u64;
         let mem_offset = (std::mem::size_of::<T>() * element_offset) as u64;
 
-        Ok(unsafe {
+        unsafe {
             self.mapped = Some(self.lve_device.device.map_memory(
                 self.memory,
                 mem_offset,
                 mem_size,
                 ash::vk::MemoryMapFlags::empty()
             ).unwrap() )
-        })
+        };
     }
 
     pub fn unmap(&mut self) {
@@ -107,6 +107,7 @@ where
         }
     }
 
+    #[allow(dead_code)]
     pub fn flush(&self) {
         let mapped_range = [ash::vk::MappedMemoryRange::builder()
             .memory(self.memory)
@@ -115,7 +116,9 @@ where
             .build()];
 
         unsafe {
-            self.lve_device.device.flush_mapped_memory_ranges(&mapped_range);
+            self.lve_device.device.flush_mapped_memory_ranges(&mapped_range)
+            .map_err(|e| log::error!("Unable to flush buffer: {}", e))
+                .unwrap();
         }
     }
 
