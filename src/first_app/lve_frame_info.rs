@@ -1,4 +1,5 @@
 extern crate nalgebra as na;
+
 use super::{lve_camera::*, lve_game_object::LveGameObject};
 
 pub const MAX_LIGHTS: usize = 10;
@@ -17,6 +18,7 @@ pub struct PointLight {
 pub struct GlobalUbo {
     pub projection_matrix: Align16<na::Matrix4<f32>>,
     pub view_matrix: Align16<na::Matrix4<f32>>,
+    pub camera_position: Align16<na::Vector3<f32>>,
     pub ambient_light_color: Align16<na::Vector4<f32>>,
     pub point_lights: [PointLight; MAX_LIGHTS],
     pub num_lights: u32,

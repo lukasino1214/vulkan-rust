@@ -1,3 +1,4 @@
+mod ecs;
 mod lve_frame_info;
 mod keyboard_movement_controller;
 mod lve_camera;
@@ -24,6 +25,7 @@ use point_render_system::*;
 use lve_frame_info::*;
 use lve_descriptor_set::*;
 use lve_image::*;
+use ecs::{scene::*, entity::*};
 
 use winit::{
     dpi::{LogicalSize},
@@ -48,12 +50,6 @@ const WIDTH: u32 = 800;
 const HEIGHT: u32 = 600;
 const NAME: &str = "Vulkan but with Rust 👀";
 
-/*#[derive(PartialEq)]
-struct GlobalUbo {
-    projection_matrix: na::Matrix4<f32>,
-    light_direction: na::Vector3<f32>
-}*/
-
 #[allow(dead_code)]
 pub struct VulkanApp {
     pub window: Window,
@@ -74,7 +70,9 @@ pub struct VulkanApp {
     font_size: f32,
     pub platform: WinitPlatform,
     renderer: Renderer,
-    lve_device: Rc<LveDevice>
+    lve_device: Rc<LveDevice>,
+    rebuild: bool,
+    scene: Scene
 }
 
 impl VulkanApp {
@@ -140,7 +138,7 @@ impl VulkanApp {
             .add_binding(0, ash::vk::DescriptorType::COMBINED_IMAGE_SAMPLER, ash::vk::ShaderStageFlags::ALL_GRAPHICS, 1)
             .build().unwrap();
 
-        let image = LveImage::new(Rc::clone(&lve_device), "./textures/poggers.png");
+        let image = LveImage::new(Rc::clone(&lve_device), "./assets/textures/poggers.png");
 
         let image_info = ash::vk::DescriptorImageInfo::builder()
             .image_layout(ash::vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
@@ -173,7 +171,8 @@ impl VulkanApp {
         let font_size = (hidpi_factor) as f32;
         let monitor_size = window.current_monitor().unwrap().size();
         imgui.io_mut().display_size = [monitor_size.width as f32, monitor_size.height as f32];
-        imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
+        imgui.io_mut().display_size = [1920.0, 1080.0];
+        imgui.io_mut().font_global_scale = (1.00 / hidpi_factor) as f32;
         platform.attach_window(imgui.io_mut(), &window, HiDpiMode::Rounded);
 
         let renderer = Renderer::with_default_allocator(
@@ -190,7 +189,13 @@ impl VulkanApp {
             }),
         ).unwrap();
 
-    
+        let mut scene = Scene::new_null("test");
+        let mut entity_1 = Entity::new("test_1", NewTransformComponent { translation: na::vector![0.0, 0.0, 0.0], rotation: na::vector![0.0, 0.0, 0.0], scale: na::vector![0.0, 0.0, 0.0]});
+        entity_1.add_point_light();
+        let entity_2 = Entity::new("test_2", NewTransformComponent { translation: na::vector![0.0, 0.0, 0.0], rotation: na::vector![0.0, 0.0, 0.0], scale: na::vector![0.0, 0.0, 0.0]});
+        
+        scene.add_entity(entity_1);
+        scene.add_entity(entity_2);
 
         (
             Self {
@@ -212,17 +217,15 @@ impl VulkanApp {
                 font_size,
                 platform,
                 renderer,
-                lve_device
+                lve_device,
+                rebuild: true,
+                scene
             },
             event_loop,
         )
     }
 
-    pub fn run(
-        &mut self,
-        keys_pressed: &[VirtualKeyCode],
-        frame_time: f32,
-    ) {
+    pub fn run(&mut self, keys_pressed: &[VirtualKeyCode], frame_time: f32) {
         // log::debug!("frame time: {}s", frame_time);
         // log::debug!("Keys pressed: {:?}", keys_pressed);
         // log::debug!("fps: {:?}", 1.0/frame_time); // This is a bit shit :)
@@ -242,7 +245,7 @@ impl VulkanApp {
                 self.viewer_object.transform.translation,
                 self.viewer_object.transform.rotation,
             )
-            .set_perspective_projection(70_f32.to_radians(), aspect, 0.001, 1000.0)
+            .set_perspective_projection(70_f32.to_radians(), aspect, 0.001, 10000000.0)
             // .set_view_direction(na::Vector3::zeros(), na::vector![0.5, 0.0, 1.0], None)
             // .set_view_target(
             //     na::vector![-1.0, -2.0, 2.0],
@@ -255,6 +258,12 @@ impl VulkanApp {
 
         if extent.width == 0 || extent.height == 0 {
             return;
+        }
+
+        if self.rebuild {
+            self.simple_render_system.recreate_pipeline(self.lve_device.clone(), &self.lve_renderer.get_swapchain_render_pass());
+            self.point_render_system.recreate_pipeline(self.lve_device.clone(), &self.lve_renderer.get_swapchain_render_pass());
+            self.rebuild = false;
         }
 
         match self.lve_renderer.begin_frame(&self.window) {
@@ -273,7 +282,7 @@ impl VulkanApp {
                 let mut ubo = GlobalUbo {
                     projection_matrix: Align16(frame_info.camera.projection_matrix),
                     view_matrix: Align16(frame_info.camera.view_matrix),
-                    //ambient_light_color: Align16(na::vector![1.0, 1.0, 1.0, 0.02]),
+                    camera_position: Align16(self.viewer_object.transform.translation),
                     ambient_light_color: Align16(na::vector![1.0, 1.0, 1.0, 0.02]),
                     point_lights: [PointLight { position: na::vector![0.0,0.0,0.0,0.0], color: na::vector![0.0,0.0,0.0,0.0] }; MAX_LIGHTS],
                     num_lights: 0
@@ -293,20 +302,22 @@ impl VulkanApp {
                 self.platform.prepare_frame(self.imgui.io_mut(), &self.window).expect("Failed to prepare frame");
                 let ui = self.imgui.frame();
 
-                imgui::Window::new("test")
+                imgui::Window::new("utils")
                     .size([300.0, 100.0], Condition::FirstUseEver)
                     .build(&ui, || {
-                        ui.text_wrapped("Hello world!");
-                        ui.text_wrapped("こんにちは世界！");
-
-                        ui.button("This...is...imgui-rs!");
-                        ui.separator();
+                        if ui.button("rebuild pipelines") {
+                            println!("rebuilding pipelines");
+                            self.rebuild = true;
+                        }
+                        /*ui.separator();
                         let mouse_pos = ui.io().mouse_pos;
                         ui.text(format!(
                             "Mouse Position: ({:.1},{:.1})",
                             mouse_pos[0], mouse_pos[1]
-                        ));
+                        ));*/
                     });
+
+                self.scene.display_info(&ui);
 
                 self.platform.prepare_render(&ui, &self.window);
                 let draw_data = ui.render();
@@ -340,7 +351,7 @@ impl VulkanApp {
     }
 
     fn load_game_objects(lve_device: &Rc<LveDevice>) -> Vec<LveGameObject> {
-        let vase = LveModel::new_from_file(Rc::clone(lve_device), "./models/smooth_vase.obj");
+        let vase = LveModel::new_from_file(Rc::clone(lve_device), "./assets/models/smooth_vase.obj");
 
         let vase_transform = Some(TransformComponent {
             translation: na::vector![0.0, 0.0, 0.2],
@@ -348,12 +359,12 @@ impl VulkanApp {
             rotation: na::vector![0.0, 0.0, 0.0],
         });
 
-        let floor = LveModel::new_from_file(Rc::clone(lve_device), "./models/floor.obj");
+        let floor = LveModel::new_from_file(Rc::clone(lve_device), "./assets/models/sponza.obj");
 
         let floor_transform = Some(TransformComponent {
             translation: na::vector![0.0, 0.5, 0.0],
-            scale: na::vector![2.0, 2.0, 2.0],
-            rotation: na::vector![0.0, 0.0, 0.0],
+            scale: na::vector![1.0, 1.0, 1.0],
+            rotation: na::vector![0.0, 0.0, 3.141],
         });
 
         let mut game_objects: Vec<LveGameObject> = Vec::new();
@@ -370,14 +381,13 @@ impl VulkanApp {
             na::vector![1.0, 1.0, 1.0],
         ];
 
-        game_objects.push(LveGameObject::make_point_light(0.1, 0.05, light_colors[0]));
+        game_objects.push(LveGameObject::make_point_light(0.5, 0.05, light_colors[0]));
         game_objects[2].transform.translation = na::vector![0.0, -0.4, 0.0];
-        game_objects.push(LveGameObject::make_point_light(0.1, 0.05, light_colors[1]));
-        game_objects[3].transform.translation = na::vector![0.5, -0.4, 0.0];
-        game_objects.push(LveGameObject::make_point_light(0.1, 0.05, light_colors[2]));
-        game_objects[4].transform.translation = na::vector![-0.5, -0.4, 0.0];
+        game_objects.push(LveGameObject::make_point_light(0.5, 0.05, light_colors[1]));
+        game_objects[3].transform.translation = na::vector![4.5, -0.4, 0.0];
+        game_objects.push(LveGameObject::make_point_light(0.5, 0.05, light_colors[2]));
+        game_objects[4].transform.translation = na::vector![-4.5, -0.4, 0.0];
 
-        //vec![LveGameObject::new(Some(vase), None, vase_transform), LveGameObject::new(Some(floor), None, floor_transform), LveGameObject::make_point_light(1.0, 0.05, na::vector![1.0, 1.0, 1.0])]
         game_objects
     }
 }

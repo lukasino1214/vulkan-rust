@@ -53,11 +53,7 @@ impl SimpleRenderSystem {
         }
     }
 
-    fn create_pipeline(
-        lve_device: Rc<LveDevice>,
-        render_pass: &vk::RenderPass,
-        pipeline_layout: &vk::PipelineLayout,
-    ) -> LvePipeline {
+    fn create_pipeline(lve_device: Rc<LveDevice>, render_pass: &vk::RenderPass, pipeline_layout: &vk::PipelineLayout,) -> LvePipeline {
         assert!(
             pipeline_layout != &vk::PipelineLayout::null(),
             "Cannot create pipeline before pipeline layout"
@@ -67,8 +63,8 @@ impl SimpleRenderSystem {
 
         LvePipeline::new(
             lve_device,
-            "./shaders/simple_shader.vert",
-            "./shaders/simple_shader.frag",
+            "./assets/shaders/simple_shader.vert",
+            "./assets/shaders/simple_shader.frag",
             pipeline_config,
             render_pass,
             pipeline_layout,
@@ -95,11 +91,11 @@ impl SimpleRenderSystem {
         }
     }
 
-    pub fn render_game_objects(
-        &mut self,
-        frame_info: &FrameInfo
-        //, image_set: ash::vk::DescriptorSet
-    ) {
+    pub fn recreate_pipeline(&mut self, lve_device: Rc<LveDevice>, render_pass: &vk::RenderPass) {
+        self.lve_pipeline = Self::create_pipeline(Rc::clone(&lve_device), render_pass, &self.pipeline_layout);
+    }
+
+    pub fn render_game_objects(&mut self, frame_info: &FrameInfo) {
         unsafe { 
             self.lve_pipeline.bind(&self.lve_device.device, frame_info.command_buffer);
             self.lve_device.device.cmd_bind_descriptor_sets(

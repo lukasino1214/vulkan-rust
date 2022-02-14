@@ -61,8 +61,8 @@ impl PointRenderSystem {
 
         LvePipeline::new(
             lve_device,
-            "./shaders/point_light.vert",
-            "./shaders/point_light.frag",
+            "./assets/shaders/point_light.vert",
+            "./assets/shaders/point_light.frag",
             pipeline_config,
             render_pass,
             pipeline_layout,
@@ -89,6 +89,10 @@ impl PointRenderSystem {
         }
     }
 
+    pub fn recreate_pipeline(&mut self, lve_device: Rc<LveDevice>, render_pass: &vk::RenderPass) {
+        self.lve_pipeline = Self::create_pipeline(Rc::clone(&lve_device), render_pass, &self.pipeline_layout);
+    }
+
     pub fn update(&self, frame_info: &FrameInfo, ubo: &mut GlobalUbo) {
         let mut light_index = 0;
 
@@ -105,10 +109,7 @@ impl PointRenderSystem {
         }
     }
 
-    pub fn render(
-        &mut self,
-        frame_info: &FrameInfo
-    ) {
+    pub fn render(&mut self, frame_info: &FrameInfo) {
         unsafe { 
             self.lve_pipeline.bind(&self.lve_device.device, frame_info.command_buffer);
             self.lve_device.device.cmd_bind_descriptor_sets(
@@ -144,34 +145,7 @@ impl PointRenderSystem {
                     None => { },
                 }
             }
-
-            //self.lve_device.device.cmd_draw(frame_info.command_buffer, 6, 1, 0, 0);
         };
-
-        // let projection_view = frame_info.camera.projection_matrix * frame_info.camera.view_matrix;
-
-        // for game_obj in game_objects.iter_mut() {
-
-        //     /*let push = SimplePushConstantData {
-        //         model_matrix: Align16(game_obj.transform.mat4()),
-        //         normal_matrix: Align16(game_obj.transform.normal_matrix())
-        //     };*/
-
-        //     unsafe {
-        //         /*let push_ptr = push.as_bytes();
-
-        //         self.lve_device.device.cmd_push_constants(
-        //             frame_info.command_buffer,
-        //             self.pipeline_layout,
-        //             vk::ShaderStageFlags::VERTEX,
-        //             0,
-        //             push_ptr,
-        //         );*/
-
-        //         game_obj.model.bind(&self.lve_device.device, frame_info.command_buffer);
-        //         game_obj.model.draw(&self.lve_device.device, frame_info.command_buffer);
-        //     }
-        // }
     }
 }
 

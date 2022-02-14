@@ -44,7 +44,62 @@ impl Builder {
             },
         ).unwrap();
 
-        let mesh = &models[0].mesh;
+        for model in models.iter() {
+            let mesh = &models[0].mesh;
+
+            let positions = mesh.positions.as_slice();
+            let colors = mesh.vertex_color.as_slice();
+            let normals = mesh.normals.as_slice();
+            let coords = mesh.texcoords.as_slice();
+
+            let vertex_count = mesh.positions.len() / 3;
+
+            let mut vertices = Vec::with_capacity(vertex_count);
+            for i in 0..vertex_count {
+                let x = positions[3 * i + 0];
+                let y = positions[3 * i + 1];
+                let z = positions[3 * i + 2];
+
+                let color_x;
+                let color_y;
+                let color_z;
+
+                //aint working
+
+                let color_index = 3 * i + 2;
+                if color_index < colors.len() {
+                    color_x = colors[3 * i - 2];
+                    color_y = colors[3 * i - 1];
+                    color_z = colors[3 * i - 0];
+                } else {
+                    color_x = 1.0;
+                    color_y = 1.0;
+                    color_z = 1.0;
+                }
+
+                let normal_x = normals[3 * i + 0];
+                let normal_y = normals[3 * i + 1];
+                let normal_z = normals[3 * i + 2];
+
+                let u = coords[2 * i + 0];
+                let v = coords[2 * i + 1];
+
+                let vertex = Vertex {
+                    position: na::vector!(x, y, z),
+                    color: na::vector!(color_x, color_y, color_z),
+                    normal: na::vector!(normal_x, normal_y, normal_z),
+                    uv: na::vector!(u, v),
+                };
+
+                vertices.push(vertex);
+            }
+
+            self.vertices.append(&mut vertices);
+            self.indices.append(&mut mesh.indices.clone());
+        }
+    }
+
+        /*let mesh = &models[0].mesh;
 
         let positions = mesh.positions.as_slice();
         let colors = mesh.vertex_color.as_slice();
@@ -95,7 +150,7 @@ impl Builder {
 
         self.vertices = vertices;
         self.indices = mesh.indices.clone();
-    }
+    }*/
 }
 
 impl Vertex {

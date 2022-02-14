@@ -7,8 +7,37 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug",
-            "program": "${workspaceFolder}/target/debug/LittleVulkanEngine",
+            "name": "Debug executable 'little_vulkan_engine'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=little_vulkan_engine",
+                    "--package=little_vulkan_engine"
+                ],
+                "filter": {
+                    "name": "little_vulkan_engine",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'little_vulkan_engine'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=little_vulkan_engine",
+                    "--package=little_vulkan_engine"
+                ],
+                "filter": {
+                    "name": "little_vulkan_engine",
+                    "kind": "bin"
+                }
+            },
             "args": [],
             "cwd": "${workspaceFolder}"
         }
