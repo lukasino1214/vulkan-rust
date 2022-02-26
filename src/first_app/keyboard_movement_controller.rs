@@ -1,4 +1,4 @@
-use super::lve_game_object::*;
+use super::vulkan::lve_game_object::*;
 
 use std::f32::consts::PI;
 use std::f32::EPSILON;

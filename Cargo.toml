@@ -19,3 +19,4 @@ image = "0.24.0"
 imgui = { version = "0.8.2", features = ["tables-api"] }
 imgui-winit-support = { version = "0.8.2", default-features = false, features = ["winit-26"] }
 imgui-rs-vulkan-renderer = "1.1.1"
+gltf = "1.0.0"

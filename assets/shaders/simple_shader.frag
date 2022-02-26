@@ -140,7 +140,7 @@ void main()
     vec3 F0 = vec3(0.04); 
     F0 = mix(F0, fragColor, metallic);
 
-    float bias = 100.0f;
+    float bias = 1000.0f;
 
     // reflectance equation
     vec3 Lo = vec3(0.0);
@@ -189,5 +189,10 @@ void main()
     // gamma correct
     //color = pow(color, vec3(1.0/2.2)); 
 
-    outColor = vec4(color, 1.0);
+    vec4 albedo = texture(texSampler, fragUV);
+    if (albedo.w < 0.00001) { 
+      discard; 
+    }
+
+    outColor = albedo * vec4(color, 1.0);
 }
