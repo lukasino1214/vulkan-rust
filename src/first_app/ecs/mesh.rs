@@ -9,11 +9,54 @@ use std::mem::size_of;
 use std::rc::Rc;
 
 use nalgebra as na;
+
+pub struct MeshTextures {
+    pub base_color: LveImage,
+    pub metallic_roughness: LveImage,
+    pub normal: LveImage,
+    pub occlusion: LveImage,
+    pub emissive: LveImage,
+}
+
+impl MeshTextures {
+    pub fn new(lve_device: Rc<LveDevice>) -> Self {
+        Self {
+            base_color: LveImage::default(lve_device.clone()),
+            metallic_roughness: LveImage::default(lve_device.clone()),
+            normal: LveImage::default(lve_device.clone()),
+            occlusion: LveImage::default(lve_device.clone()),
+            emissive: LveImage::default(lve_device.clone()),
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub struct MeshUniforms {
+    pub base_color: na::Vector3<f32>,
+    pub metallic: f32,
+    pub roughness: f32,
+    pub emissive: na::Vector3<f32>,
+}
+
+impl MeshUniforms {
+    pub fn new() -> Self {
+        Self {
+            base_color: na::vector![1.0, 1.0, 1.0], // Maybe add alpha channel
+            metallic: 1.0,
+            roughness: 1.0,
+            emissive: na::vector![1.0, 1.0, 1.0],
+        }
+    }
+}
+
+
+
 #[derive(Clone, Copy, PartialEq)]
 pub struct Vertex {
     pub position: na::Vector3<f32>,
     pub color: na::Vector3<f32>,
     pub normal: na::Vector3<f32>,
+    pub tangent: na::Vector4<f32>,
     pub tex_coord: na::Vector2<f32>,
 }
 
@@ -53,6 +96,12 @@ impl Vertex {
             vk::VertexInputAttributeDescription::builder()
                 .binding(0)
                 .location(3)
+                .format(vk::Format::R32G32B32A32_SFLOAT)
+                .offset(memoffset::offset_of!(Vertex, tangent) as u32) // Using size of the position field
+                .build(),
+            vk::VertexInputAttributeDescription::builder()
+                .binding(0)
+                .location(4)
                 .format(vk::Format::R32G32_SFLOAT)
                 .offset(memoffset::offset_of!(Vertex, tex_coord) as u32) // Using size of the position field
                 .build(),
@@ -67,25 +116,45 @@ pub struct Mesh {
     has_index_buffer: bool,
     index_buffer: LveBuffer<u32>,
     index_count: u32,
-    image: LveImage,
-    pub image_descriptor_set: ash::vk::DescriptorSet,
+    uniform_buffer: LveBuffer<MeshUniforms>,
+    textures: MeshTextures,
+    pub descriptor_set: ash::vk::DescriptorSet,
+    //descriptor_layout: Rc<LveDescriptorSetLayout>
 }
 
 impl Mesh {
-    pub fn new(lve_device: &Rc<LveDevice>, vertices: Vec<Vertex>, indices: Vec<u32>, image: LveImage, image_set_layout: Rc<LveDescriptorSetLayout>, global_pool: Rc<LveDescriptorPool>) -> Rc<Self> {
+    pub fn new(lve_device: &Rc<LveDevice>, vertices: Vec<Vertex>, indices: Vec<u32>, textures: MeshTextures, uniforms: MeshUniforms, global_pool: Rc<LveDescriptorPool>) -> Rc<Self> {
         let (vertex_buffer, vertex_count) = Self::create_vertex_buffers(&lve_device, &vertices);
         let (has_index_buffer, index_buffer, index_count) = Self::create_index_buffers(&lve_device, &indices);
 
+        let mut uniform_buffer = LveBuffer::new(
+            Rc::clone(&lve_device),
+            1,
+            ash::vk::BufferUsageFlags::UNIFORM_BUFFER,
+            ash::vk::MemoryPropertyFlags::HOST_VISIBLE,
+        );
 
-        let image_info = ash::vk::DescriptorImageInfo::builder()
-            .image_layout(ash::vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-            .image_view(image.image_view)
-            .sampler(image.image_sampler)
-            .build();
+        uniform_buffer.map(0);
 
-        let image_descriptor_set = LveDescriptorSetWriter::new(image_set_layout.clone(), global_pool.clone())
-                .write_image(0, &[image_info])
-                .build().unwrap();
+        uniform_buffer.write_to_buffer(&[uniforms]);
+
+        let descriptor_layout = LveDescriptorSetLayout::new(Rc::clone(&lve_device))
+            .add_binding(0, ash::vk::DescriptorType::COMBINED_IMAGE_SAMPLER, ash::vk::ShaderStageFlags::ALL_GRAPHICS, 1)
+            .add_binding(1, ash::vk::DescriptorType::COMBINED_IMAGE_SAMPLER, ash::vk::ShaderStageFlags::ALL_GRAPHICS, 1)
+            .add_binding(2, ash::vk::DescriptorType::COMBINED_IMAGE_SAMPLER, ash::vk::ShaderStageFlags::ALL_GRAPHICS, 1)
+            .add_binding(3, ash::vk::DescriptorType::COMBINED_IMAGE_SAMPLER, ash::vk::ShaderStageFlags::ALL_GRAPHICS, 1)
+            .add_binding(4, ash::vk::DescriptorType::COMBINED_IMAGE_SAMPLER, ash::vk::ShaderStageFlags::ALL_GRAPHICS, 1)
+            .add_binding(5, ash::vk::DescriptorType::UNIFORM_BUFFER, ash::vk::ShaderStageFlags::ALL_GRAPHICS, 1)
+            .build().unwrap();
+
+        let descriptor_set = LveDescriptorSetWriter::new(descriptor_layout, global_pool.clone())
+            .write_image(0, &[textures.base_color.image_info])
+            .write_image(1, &[textures.metallic_roughness.image_info])
+            .write_image(2, &[textures.normal.image_info])
+            .write_image(3, &[textures.occlusion.image_info])
+            .write_image(4, &[textures.emissive.image_info])
+            .write_to_buffer(5, &[uniform_buffer.descriptor_info()])
+            .build().unwrap();
 
         
         Rc::new(Self {
@@ -94,8 +163,10 @@ impl Mesh {
             has_index_buffer,
             index_buffer,
             index_count,
-            image,
-            image_descriptor_set,
+            uniform_buffer,
+            textures,
+            descriptor_set,
+            //descriptor_layout
         })
     }
 

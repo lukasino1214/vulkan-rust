@@ -48,10 +48,11 @@ void main() {
 
 #version 450
 
-layout (location = 0) in vec3 fragColor;
-layout (location = 1) in vec3 fragPosWorld;
-layout (location = 2) in vec3 fragNormalWorld;
-layout (location = 3) in vec2 fragUV;
+layout(location = 0) in vec3 fragColor;
+layout(location = 1) in vec3 fragPosWorld;
+layout(location = 2) in vec3 fragNormalWorld;
+layout(location = 3) in vec4 fragTangentWorld;
+layout(location = 4) in vec2 fragUV;
 
 layout (location = 0) out vec4 outColor;
 
@@ -70,19 +71,28 @@ layout(set = 0, binding = 0) uniform GlobalUbo {
   int numLights;
 } ubo;
 
-layout (set = 1, binding = 0) uniform sampler2D texSampler;
+layout (set = 1, binding = 0) uniform sampler2D albedo;
+layout (set = 1, binding = 1) uniform sampler2D metallic_roughness;
+layout (set = 1, binding = 2) uniform sampler2D normal;
+layout (set = 1, binding = 3) uniform sampler2D occlusion;
+layout (set = 1, binding = 4) uniform sampler2D emissive;
+layout(set = 1, binding = 5) uniform PbrUbo {
+  vec3 albedo;
+  float metallic;
+  float roughness;
+  vec3 emissive; // w is intensity
+} pbr;
 
 layout(push_constant) uniform Push {
   mat4 modelMatrix;
   mat4 normalMatrix;
 } push;
 
-
 // vec3 albedoMesh = vec3(1.0);
 // vec3 emessivityMesh = vec3(0.5);
-float roughness = 0.5;
+float roughness = 0.1;
 // vec3 baseReflectance = vec3(0.1);
-float metallic = 0.5;
+float metallic = 0.9;
 // vec3 lightPos = vec3(-1.0);
 
 
@@ -132,7 +142,22 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
 // ----------------------------------------------------------------------------
 void main()
 {		
+
+    vec4 albedo = texture(albedo, fragUV);
+    if (albedo.w < 0.00001) { 
+      discard; 
+    }
+
+    float metallic = texture(metallic_roughness, fragUV).r;
+    float roughness = texture(metallic_roughness, fragUV).g;
+
     vec3 N = normalize(fragNormalWorld);
+    vec3 T = normalize(fragTangentWorld.xyz);
+    if(fragTangentWorld != vec4(0.0)) {
+      vec3 B = cross(fragNormalWorld, fragTangentWorld.xyz) * fragTangentWorld.w;
+      mat3 TBN = mat3(T, B, N);
+      N = TBN * normalize(texture(normal, fragUV).xyz * 2.0 - vec3(1.0));
+    }
     vec3 V = normalize(ubo.cameraPos - fragPosWorld);
 
     // calculate reflectance at normal incidence; if dia-electric (like plastic) use F0 
@@ -188,11 +213,6 @@ void main()
     color = color / (color + vec3(1.0));
     // gamma correct
     //color = pow(color, vec3(1.0/2.2)); 
-
-    vec4 albedo = texture(texSampler, fragUV);
-    if (albedo.w < 0.00001) { 
-      discard; 
-    }
 
     outColor = albedo * vec4(color, 1.0);
 }

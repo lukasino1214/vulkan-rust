@@ -118,6 +118,15 @@ impl VulkanApp {
             .add_binding(0, ash::vk::DescriptorType::COMBINED_IMAGE_SAMPLER, ash::vk::ShaderStageFlags::ALL_GRAPHICS, 1)
             .build().unwrap();
 
+        let descriptor_layout = LveDescriptorSetLayout::new(Rc::clone(&lve_device))
+            .add_binding(0, ash::vk::DescriptorType::COMBINED_IMAGE_SAMPLER, ash::vk::ShaderStageFlags::ALL_GRAPHICS, 1)
+            .add_binding(1, ash::vk::DescriptorType::COMBINED_IMAGE_SAMPLER, ash::vk::ShaderStageFlags::ALL_GRAPHICS, 1)
+            .add_binding(2, ash::vk::DescriptorType::COMBINED_IMAGE_SAMPLER, ash::vk::ShaderStageFlags::ALL_GRAPHICS, 1)
+            .add_binding(3, ash::vk::DescriptorType::COMBINED_IMAGE_SAMPLER, ash::vk::ShaderStageFlags::ALL_GRAPHICS, 1)
+            .add_binding(4, ash::vk::DescriptorType::COMBINED_IMAGE_SAMPLER, ash::vk::ShaderStageFlags::ALL_GRAPHICS, 1)
+            .add_binding(5, ash::vk::DescriptorType::UNIFORM_BUFFER, ash::vk::ShaderStageFlags::ALL_GRAPHICS, 1)
+            .build().unwrap();
+
         let image = LveImage::new(Rc::clone(&lve_device), "./assets/textures/poggers.png");
 
         let image_info = ash::vk::DescriptorImageInfo::builder()
@@ -133,13 +142,13 @@ impl VulkanApp {
         let simple_render_system = SimpleRenderSystem::new(
             Rc::clone(&lve_device),
             &lve_renderer.get_swapchain_render_pass(),
-            &[global_set_layout.layout, image_set_layout.layout]
+            &[global_set_layout.layout, descriptor_layout.layout]
         );
 
         let advanced_render_system = AdvancedRenderSystem::new(
             Rc::clone(&lve_device),
             &lve_renderer.get_swapchain_render_pass(),
-            &[global_set_layout.layout, image_set_layout.layout]
+            &[global_set_layout.layout, descriptor_layout.layout]
         );
 
         let point_render_system = PointRenderSystem::new(
@@ -176,8 +185,9 @@ impl VulkanApp {
         ).unwrap();
 
         let mut scene = Scene::new_null("test");
-        let mut entity_1 = Entity::new("test_1", NewTransformComponent { translation: na::vector![0.0, 0.0, 3.0], rotation: na::vector![0.0, 0.0, 3.141], scale: na::vector![0.01, 0.01, 0.01]});
-        let model = Rc::new(Model::new(&Rc::clone(&lve_device), "./assets/models/Sponza/glTF/Sponza.gltf", image_set_layout.clone(), global_pool.clone()));
+        let mut entity_1 = Entity::new("test_1", NewTransformComponent { translation: na::vector![0.0, 0.0, 3.0], rotation: na::vector![0.0, 0.0, 3.141], scale: na::vector![1.01, 1.01, 1.01]});
+        let model = Rc::new(Model::new(&Rc::clone(&lve_device), "./assets/models/Sponza/glTF/Sponza.gltf", global_pool.clone()));
+        //let model = Rc::new(Model::new(&Rc::clone(&lve_device), "./assets/models/Map/scene.gltf", global_pool.clone()));
         entity_1.set_model(model);
         let mut entity_2 = Entity::new("test_2", NewTransformComponent { translation: na::vector![0.0, 0.0, 0.0], rotation: na::vector![0.0, 0.0, 0.0], scale: na::vector![0.0, 0.0, 0.0]});
         entity_2.add_spot_light();
@@ -366,7 +376,7 @@ impl VulkanApp {
         //game_objects.push(LveGameObject::new(Some(floor), None, floor_transform));
 
         let light_colors = vec![
-            na::vector![1.0, 0.1, 0.1],
+            na::vector![1.0, 1.0, 1.0],
             na::vector![0.1, 0.1, 1.0],
             na::vector![0.1, 1.0, 0.1],
             na::vector![1.0, 1.0, 0.1],

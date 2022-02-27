@@ -8,17 +8,13 @@ use std::rc::Rc;
 
 extern crate nalgebra as na;
 
-type Pos = na::Vector3<f32>;
-type Color = na::Vector3<f32>;
-type Normal = na::Vector3<f32>;
-type UV = na::Vector2<f32>;
-
 #[derive(Clone, Copy, PartialEq)]
 pub struct Vertex {
-    pub position: Pos,
-    pub color: Color,
-    pub normal: Normal,
-    pub uv: UV
+    pub position: na::Vector3<f32>,
+    pub color: na::Vector3<f32>,
+    pub normal: na::Vector3<f32>,
+    pub tangent: na::Vector4<f32>,
+    pub tex_coord: na::Vector2<f32>,
 }
 
 pub struct Builder {
@@ -88,7 +84,8 @@ impl Builder {
                     position: na::vector!(x, y, z),
                     color: na::vector!(color_x, color_y, color_z),
                     normal: na::vector!(normal_x, normal_y, normal_z),
-                    uv: na::vector!(u, v),
+                    tangent: na::vector![0.0, 0.0, 0.0, 0.0],
+                    tex_coord: na::vector!(u, v),
                 };
 
                 vertices.push(vertex);
@@ -101,6 +98,7 @@ impl Builder {
 }
 
 impl Vertex {
+    #[allow(dead_code)]
     pub fn get_binding_descriptions() -> Vec<vk::VertexInputBindingDescription> {
         let vertex_size = size_of::<Vertex>() as u32;
 
@@ -111,6 +109,7 @@ impl Vertex {
             .build()]
     }
 
+    #[allow(dead_code)]
     pub fn get_attribute_descriptions() -> Vec<vk::VertexInputAttributeDescription> {
         vec![
             vk::VertexInputAttributeDescription::builder()
@@ -134,8 +133,14 @@ impl Vertex {
             vk::VertexInputAttributeDescription::builder()
                 .binding(0)
                 .location(3)
+                .format(vk::Format::R32G32B32A32_SFLOAT)
+                .offset(memoffset::offset_of!(Vertex, tangent) as u32) // Using size of the position field
+                .build(),
+            vk::VertexInputAttributeDescription::builder()
+                .binding(0)
+                .location(4)
                 .format(vk::Format::R32G32_SFLOAT)
-                .offset(memoffset::offset_of!(Vertex, uv) as u32) // Using size of the position field
+                .offset(memoffset::offset_of!(Vertex, tex_coord) as u32) // Using size of the position field
                 .build(),
         ]
     }

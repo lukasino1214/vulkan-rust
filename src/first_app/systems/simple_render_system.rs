@@ -96,14 +96,14 @@ impl SimpleRenderSystem {
     pub fn render_game_objects(&mut self, frame_info: &FrameInfo) {
         unsafe { 
             self.lve_pipeline.bind(&self.lve_device.device, frame_info.command_buffer);
-            self.lve_device.device.cmd_bind_descriptor_sets(
+            /*self.lve_device.device.cmd_bind_descriptor_sets(
                 frame_info.command_buffer,
                 ash::vk::PipelineBindPoint::GRAPHICS,
                 self.pipeline_layout,
                 0,
                 &[frame_info.global_descriptor_set, frame_info.image_descriptor_set],
                 &[],
-            );
+            );*/
         };
 
         for game_obj in frame_info.game_objects.iter() {
