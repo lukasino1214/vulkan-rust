@@ -10,10 +10,37 @@ pub struct LveImage {
     image: vk::Image,
     image_memory: vk::DeviceMemory,
     pub image_view: vk::ImageView,
-    pub image_sampler: vk::Sampler
+    pub image_sampler: vk::Sampler,
+    pub image_info: vk::DescriptorImageInfo
 }
 
 impl LveImage {
+    pub fn default(lve_device: Rc<LveDevice>) -> Self {
+        Self::new(lve_device, "./assets/textures/default_texture.png")
+    }
+
+    #[allow(dead_code)]
+    pub fn null(lve_device: Rc<LveDevice>) -> Self {
+
+        let image_view = ash::vk::ImageView::null();
+        let image_sampler = ash::vk::Sampler::null();
+
+        let image_info = ash::vk::DescriptorImageInfo::builder()
+            .image_layout(ash::vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+            .image_view(image_view)
+            .sampler(image_sampler)
+            .build();
+
+        LveImage {
+            lve_device,
+            image: ash::vk::Image::null(),
+            image_memory: ash::vk::DeviceMemory::null(),
+            image_view,
+            image_sampler,
+            image_info
+        }
+    }
+
     pub fn new(lve_device: Rc<LveDevice>, path: &str) -> Self {
         let image = image::open(path).map(|img| img.to_rgba8()).expect("unable to open image");
         let (width, height) = image.dimensions();
@@ -41,12 +68,19 @@ impl LveImage {
         let image_view = Self::create_image_view(&lve_device, image, vk::Format::R8G8B8A8_SRGB);
         let image_sampler = Self::create_texture_sampler(&lve_device);
 
+        let image_info = ash::vk::DescriptorImageInfo::builder()
+            .image_layout(ash::vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+            .image_view(image_view)
+            .sampler(image_sampler)
+            .build();
+
         LveImage {
             lve_device,
             image,
             image_memory,
             image_view,
-            image_sampler
+            image_sampler,
+            image_info
         }
     }
 

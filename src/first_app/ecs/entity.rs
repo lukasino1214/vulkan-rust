@@ -5,12 +5,49 @@ use super::model::*;
 
 use nalgebra as na;
 
+use std::rc::Rc;
+
 pub struct NewTransformComponent {
     pub translation: na::Vector3<f32>,
     pub scale: na::Vector3<f32>,
     pub rotation: na::Vector3<f32>,
 }
 
+impl NewTransformComponent {
+    pub fn mat4(&self) -> na::Matrix4<f32> {
+
+        let c3 = self.rotation[2].cos();
+        let s3 = self.rotation[2].sin();
+        let c2 = self.rotation[0].cos();
+        let s2 = self.rotation[0].sin();
+        let c1 = self.rotation[1].cos();
+        let s1 = self.rotation[1].sin();
+
+        na::matrix!(self.scale[0] * (c1 * c3 + s1 * s2 * s3), self.scale[1] * (c3 * s1 * s2 - c1 * s3), self.scale[2] * (c2 * s1), self.translation[0];
+                    self.scale[0] * (c2 * s3)               , self.scale[1] * (c2 * c3)                , self.scale[2] * (-s2)    , self.translation[1];
+                    self.scale[0] * (c1 * s2 * s3 - c3 * s1), self.scale[1] * (c1 * c3 * s2 + s1 * s3), self.scale[2] * (c1 * c2), self.translation[2];
+                    0.0                                     , 0.0                                     , 0.0                      , 1.0;
+                )
+    }
+
+    pub fn normal_matrix(&self) -> na::Matrix4<f32> {
+
+        let c3 = self.rotation[2].cos();
+        let s3 = self.rotation[2].sin();
+        let c2 = self.rotation[0].cos();
+        let s2 = self.rotation[0].sin();
+        let c1 = self.rotation[1].cos();
+        let s1 = self.rotation[1].sin();
+
+        let inv_scale = na::vector!(1.0 / self.scale[0], 1.0 / self.scale[1], 1.0 / self.scale[2]);
+
+        na::matrix!(inv_scale[0] * (c1 * c3 + s1 * s2 * s3), inv_scale[1] * (c3 * s1 * s2 - c1 * s3), inv_scale[2] * (c2 * s1), 0.0;
+                    inv_scale[0] * (c2 * s3)               , inv_scale[1] * (c2 * c3)               , inv_scale[2] * (-s2)    , 0.0;
+                    inv_scale[0] * (c1 * s2 * s3 - c3 * s1), inv_scale[1] * (c1 * c3 * s2 + s1 * s3), inv_scale[2] * (c1 * c2), 0.0;
+                    0.0                                    , 0.0                                    , 0.0                     , 0.0
+        )
+    }
+}
 
 pub struct PointLightComponent {
     color: na::Vector3<f32>,
@@ -37,7 +74,7 @@ pub struct Entity {
     pub name: String,
     pub selected: bool,
     pub transform: NewTransformComponent,
-    pub model: Option<Model>,
+    pub model: Option<Rc<Model>>,
     pub point_light: Option<PointLightComponent>,
     pub spot_light: Option<SpotLightComponent>,
     pub directional_light: Option<DirectionalLightComponent>,
@@ -56,36 +93,44 @@ impl Entity {
         }
     }
 
-    pub fn set_model(&mut self, component: Model) {
+    #[allow(dead_code)]
+    pub fn set_model(&mut self, component: Rc<Model>) {
         self.model = Some(component);
     }
 
+    #[allow(dead_code)]
     pub fn set_point_light(&mut self, component: PointLightComponent) {
         self.point_light = Some(component);
         self.spot_light = None;
         self.directional_light = None;
     }
 
+    #[allow(dead_code)]
     pub fn set_spot_light(&mut self, component: SpotLightComponent) {
         self.point_light = None;
         self.spot_light = Some(component);
         self.directional_light = None;
     }
 
+    #[allow(dead_code)]
     pub fn set_directional_light(&mut self, component: DirectionalLightComponent) {
         self.point_light = None;
         self.spot_light = None;
         self.directional_light = Some(component);
     }
 
+    #[allow(dead_code)]
     pub fn add_point_light(&mut self) {
         self.point_light = Some(PointLightComponent {
             color: na::vector![1.0, 1.0, 1.0],
             intensity: 0.0,
             radius: 0.0
         });
+        self.spot_light = None;
+        self.directional_light = None;
     }
 
+    #[allow(dead_code)]
     pub fn add_spot_light(&mut self) {
         self.spot_light = Some(SpotLightComponent {
             color: na::vector![1.0, 1.0, 1.0],
@@ -95,14 +140,19 @@ impl Entity {
             outer_cut_off: 0.0,
             radius: 0.0
         });
+        self.spot_light = None;
+        self.directional_light = None;
     }
 
+    #[allow(dead_code)]
     pub fn add_directional_light(&mut self) {
-        self.point_light = Some(PointLightComponent {
+        self.directional_light = Some(DirectionalLightComponent {
             color: na::vector![0.0, 0.0, 0.0],
             intensity: 0.0,
-            radius: 0.0
+            direction: na::vector![0.0, 0.0, 0.0]
         });
+        self.spot_light = None;
+        self.point_light = None;
     }
 
     pub fn display_info(&mut self, ui: &imgui::Ui) {
@@ -117,12 +167,12 @@ impl Entity {
             self.transform.translation.y = transfrom[1];
             self.transform.translation.z = transfrom[2];
 
-            let pre_rotation = self.transform.translation;
+            let pre_rotation = self.transform.rotation;
             let mut rotation = [pre_rotation.x, pre_rotation.y, pre_rotation.z];
             ui.input_float3("Rotation", &mut rotation).build();
-            self.transform.translation.x = rotation[0];
-            self.transform.translation.y = rotation[1];
-            self.transform.translation.z = rotation[2];
+            self.transform.rotation.x = rotation[0];
+            self.transform.rotation.y = rotation[1];
+            self.transform.rotation.z = rotation[2];
 
             let pre_scale = self.transform.scale;
             let mut scale = [pre_scale.x, pre_scale.y, pre_scale.z];
@@ -207,7 +257,7 @@ impl Entity {
 
     }
 
-    pub fn render(&self) {
+    /*pub fn render(&self) {
         self.model.as_ref().unwrap().render();
-    }
+    }*/
 }

@@ -2,18 +2,21 @@ use super::entity::*;
 
 use std::str::FromStr;
 
+#[allow(dead_code)]
 pub struct Scene {
     name: String,
-    entities: Vec<Entity>,
+    pub entities: Vec<Entity>,
     entity_id: usize
 }
 
 impl Scene {
-    pub fn new_from_file(path: &str) {
+    #[allow(dead_code)]
+    pub fn new_from_file(_path: &str) {
         todo!();
     }
 
-    pub fn new(name: &str, entities: &Vec<Entity>) {
+    #[allow(dead_code)]
+    pub fn new(_name: &str, _entities: &Vec<Entity>) {
 
     }
 
@@ -29,18 +32,19 @@ impl Scene {
         self.entities.push(entity);
     }
 
-    pub fn update(&mut self, frame_time: f32) {
+    #[allow(dead_code)]
+    pub fn update(&mut self, _frame_time: f32) {
         todo!();
     }
 
-    pub fn render(&self) {
+    /*pub fn render(&self) {
         for entity in self.entities.iter() {
             match &entity.model {
                 Some(_) => { entity.model.as_ref().unwrap().render() },
                 None => {}
             }
         }
-    }
+    }*/
 
     pub fn display_info(&mut self, ui: &imgui::Ui) {
         imgui::Window::new("Scene").size([300.0, 100.0], imgui::Condition::FirstUseEver)

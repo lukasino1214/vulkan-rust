@@ -50,11 +50,11 @@ fn main() {
                 ..
             } => {
                 match input.virtual_keycode {
-                    Some(VirtualKeyCode::Escape) => {
+                    /*Some(VirtualKeyCode::Escape) => {
                         log::debug!("Closing window");
                         *control_flow = ControlFlow::Exit;
                         return;
-                    }
+                    }*/
                     Some(input_key) => {
                         match input.state {
                             ElementState::Pressed => {

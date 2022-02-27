@@ -1,6 +1,6 @@
-use super::lve_device::*;
-use super::lve_pipeline::*;
-use super::lve_frame_info::*;
+use crate::first_app::vulkan::lve_device::*;
+use crate::first_app::vulkan::lve_pipeline::*;
+use crate::first_app::vulkan::lve_frame_info::*;
 
 use ash::{vk, Device};
 
@@ -8,9 +8,6 @@ use std::rc::Rc;
 
 extern crate nalgebra as na;
 
-#[repr(align(16))]
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Align16<T>(pub T);
 #[derive(PartialEq)]
 struct PointLightPushConstants {
     position: na::Vector4<f32>,

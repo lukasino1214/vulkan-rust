@@ -1,6 +1,7 @@
-use super::lve_device::*;
-use super::lve_pipeline::*;
-use super::lve_frame_info::*;
+use crate::first_app::vulkan::lve_device::*;
+use crate::first_app::vulkan::lve_pipeline::*;
+use crate::first_app::vulkan::lve_frame_info::*;
+use crate::first_app::ecs::scene::*;
 
 use ash::{vk, Device};
 
@@ -8,9 +9,7 @@ use std::rc::Rc;
 
 extern crate nalgebra as na;
 
-#[repr(align(16))]
 #[derive(Debug, Clone, Copy)]
-pub struct Align16<T>(pub T);
 #[allow(dead_code)]
 pub struct SimplePushConstantData {
     model_matrix: Align16<na::Matrix4<f32>>,
@@ -34,13 +33,13 @@ impl SimplePushConstantData {
     }
 }
 
-pub struct SimpleRenderSystem {
+pub struct AdvancedRenderSystem {
     lve_device: Rc<LveDevice>,
     lve_pipeline: LvePipeline,
     pipeline_layout: vk::PipelineLayout,
 }
 
-impl SimpleRenderSystem {
+impl AdvancedRenderSystem {
     pub fn new(lve_device: Rc<LveDevice>, render_pass: &vk::RenderPass, global_set_layout: &[ash::vk::DescriptorSetLayout]) -> Self {
         let pipeline_layout = Self::create_pipeline_layout(&lve_device.device, global_set_layout);
 
@@ -95,24 +94,23 @@ impl SimpleRenderSystem {
         self.lve_pipeline = Self::create_pipeline(Rc::clone(&lve_device), render_pass, &self.pipeline_layout);
     }
 
-    pub fn render_game_objects(&mut self, frame_info: &FrameInfo) {
+    pub fn render_scene(&mut self, frame_info: &FrameInfo, scene: &Scene) {
         unsafe { 
             self.lve_pipeline.bind(&self.lve_device.device, frame_info.command_buffer);
-            self.lve_device.device.cmd_bind_descriptor_sets(
+            /*self.lve_device.device.cmd_bind_descriptor_sets(
                 frame_info.command_buffer,
                 ash::vk::PipelineBindPoint::GRAPHICS,
                 self.pipeline_layout,
                 0,
                 &[frame_info.global_descriptor_set, frame_info.image_descriptor_set],
                 &[],
-            );
+            );*/
         };
 
-        for game_obj in frame_info.game_objects.iter() {
-
+        for entity in scene.entities.iter() {
             let push = SimplePushConstantData {
-                model_matrix: Align16(game_obj.transform.mat4()),
-                normal_matrix: Align16(game_obj.transform.normal_matrix())
+                model_matrix: Align16(entity.transform.mat4()),
+                normal_matrix: Align16(entity.transform.normal_matrix())
             };
 
             unsafe {
@@ -126,10 +124,9 @@ impl SimpleRenderSystem {
                     push_ptr,
                 );
 
-                match &game_obj.model {
+                match &entity.model {
                     Some(_) => {
-                        game_obj.model.as_ref().unwrap().bind(frame_info.command_buffer);
-                        game_obj.model.as_ref().unwrap().draw(&self.lve_device.device, frame_info.command_buffer);
+                        entity.model.as_ref().unwrap().render(&self.lve_device.device, frame_info, self.pipeline_layout);
                     }
                     _ => (),
                 }
@@ -138,7 +135,7 @@ impl SimpleRenderSystem {
     }
 }
 
-impl Drop for SimpleRenderSystem {
+impl Drop for AdvancedRenderSystem {
     fn drop(&mut self) {
         log::debug!("Dropping SimpleRenderSystem");
 

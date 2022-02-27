@@ -1,159 +1,67 @@
-use super::lve_device::*;
-use super::lve_buffer::*;
+use crate::first_app::vulkan::lve_descriptor_set::*;
+use crate::first_app::vulkan::lve_device::*;
+use crate::first_app::vulkan::lve_buffer::*;
+use crate::first_app::vulkan::lve_image::*;
 
 use ash::{vk, Device};
 
 use std::mem::size_of;
 use std::rc::Rc;
 
-extern crate nalgebra as na;
+use nalgebra as na;
 
-type Pos = na::Vector3<f32>;
-type Color = na::Vector3<f32>;
-type Normal = na::Vector3<f32>;
-type UV = na::Vector2<f32>;
+pub struct MeshTextures {
+    pub base_color: LveImage,
+    pub metallic_roughness: LveImage,
+    pub normal: LveImage,
+    pub occlusion: LveImage,
+    pub emissive: LveImage,
+}
+
+impl MeshTextures {
+    pub fn new(lve_device: Rc<LveDevice>) -> Self {
+        Self {
+            base_color: LveImage::default(lve_device.clone()),
+            metallic_roughness: LveImage::default(lve_device.clone()),
+            normal: LveImage::default(lve_device.clone()),
+            occlusion: LveImage::default(lve_device.clone()),
+            emissive: LveImage::default(lve_device.clone()),
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub struct MeshUniforms {
+    pub base_color: na::Vector3<f32>,
+    pub metallic: f32,
+    pub roughness: f32,
+    pub emissive: na::Vector3<f32>,
+}
+
+impl MeshUniforms {
+    pub fn new() -> Self {
+        Self {
+            base_color: na::vector![1.0, 1.0, 1.0], // Maybe add alpha channel
+            metallic: 1.0,
+            roughness: 1.0,
+            emissive: na::vector![1.0, 1.0, 1.0],
+        }
+    }
+}
+
+
 
 #[derive(Clone, Copy, PartialEq)]
 pub struct Vertex {
-    pub position: Pos,
-    pub color: Color,
-    pub normal: Normal,
-    pub uv: UV
-}
-
-pub struct Builder {
-    pub vertices: Vec<Vertex>,
-    pub indices: Vec<u32>
-}
-
-impl Builder {
-    pub fn new() -> Self {
-        Self {
-            vertices: Vec::new(),
-            indices: Vec::new()
-        }
-    }
-
-    pub fn load_from_file(&mut self, file_path: &str) {
-        let (models, _) = tobj::load_obj(
-            file_path,
-            &tobj::LoadOptions {
-                single_index: true,
-                triangulate: true,
-                ..Default::default()
-            },
-        ).unwrap();
-
-        for model in models.iter() {
-            let mesh = &models[0].mesh;
-
-            let positions = mesh.positions.as_slice();
-            let colors = mesh.vertex_color.as_slice();
-            let normals = mesh.normals.as_slice();
-            let coords = mesh.texcoords.as_slice();
-
-            let vertex_count = mesh.positions.len() / 3;
-
-            let mut vertices = Vec::with_capacity(vertex_count);
-            for i in 0..vertex_count {
-                let x = positions[3 * i + 0];
-                let y = positions[3 * i + 1];
-                let z = positions[3 * i + 2];
-
-                let color_x;
-                let color_y;
-                let color_z;
-
-                //aint working
-
-                let color_index = 3 * i + 2;
-                if color_index < colors.len() {
-                    color_x = colors[3 * i - 2];
-                    color_y = colors[3 * i - 1];
-                    color_z = colors[3 * i - 0];
-                } else {
-                    color_x = 1.0;
-                    color_y = 1.0;
-                    color_z = 1.0;
-                }
-
-                let normal_x = normals[3 * i + 0];
-                let normal_y = normals[3 * i + 1];
-                let normal_z = normals[3 * i + 2];
-
-                let u = coords[2 * i + 0];
-                let v = coords[2 * i + 1];
-
-                let vertex = Vertex {
-                    position: na::vector!(x, y, z),
-                    color: na::vector!(color_x, color_y, color_z),
-                    normal: na::vector!(normal_x, normal_y, normal_z),
-                    uv: na::vector!(u, v),
-                };
-
-                vertices.push(vertex);
-            }
-
-            self.vertices.append(&mut vertices);
-            self.indices.append(&mut mesh.indices.clone());
-        }
-    }
-
-        /*let mesh = &models[0].mesh;
-
-        let positions = mesh.positions.as_slice();
-        let colors = mesh.vertex_color.as_slice();
-        let normals = mesh.normals.as_slice();
-        let coords = mesh.texcoords.as_slice();
-
-        let vertex_count = mesh.positions.len() / 3;
-
-        let mut vertices = Vec::with_capacity(vertex_count);
-        for i in 0..vertex_count {
-            let x = positions[3 * i + 0];
-            let y = positions[3 * i + 1];
-            let z = positions[3 * i + 2];
-
-            let color_x;
-            let color_y;
-            let color_z;
-
-            //aint working
-
-            let color_index = 3 * i + 2;
-            if color_index < colors.len() {
-                color_x = colors[3 * i - 2];
-                color_y = colors[3 * i - 1];
-                color_z = colors[3 * i - 0];
-            } else {
-                color_x = 1.0;
-                color_y = 1.0;
-                color_z = 1.0;
-            }
-
-            let normal_x = normals[3 * i + 0];
-            let normal_y = normals[3 * i + 1];
-            let normal_z = normals[3 * i + 2];
-
-            let u = coords[2 * i + 0];
-            let v = coords[2 * i + 1];
-
-            let vertex = Vertex {
-                position: na::vector!(x, y, z),
-                color: na::vector!(color_x, color_y, color_z),
-                normal: na::vector!(normal_x, normal_y, normal_z),
-                uv: na::vector!(u, v),
-            };
-
-            vertices.push(vertex);
-        }
-
-        self.vertices = vertices;
-        self.indices = mesh.indices.clone();
-    }*/
+    pub position: na::Vector3<f32>,
+    pub color: na::Vector3<f32>,
+    pub normal: na::Vector3<f32>,
+    pub tangent: na::Vector4<f32>,
+    pub tex_coord: na::Vector2<f32>,
 }
 
 impl Vertex {
+    #[allow(dead_code)]
     pub fn get_binding_descriptions() -> Vec<vk::VertexInputBindingDescription> {
         let vertex_size = size_of::<Vertex>() as u32;
 
@@ -164,6 +72,7 @@ impl Vertex {
             .build()]
     }
 
+    #[allow(dead_code)]
     pub fn get_attribute_descriptions() -> Vec<vk::VertexInputAttributeDescription> {
         vec![
             vk::VertexInputAttributeDescription::builder()
@@ -187,25 +96,66 @@ impl Vertex {
             vk::VertexInputAttributeDescription::builder()
                 .binding(0)
                 .location(3)
+                .format(vk::Format::R32G32B32A32_SFLOAT)
+                .offset(memoffset::offset_of!(Vertex, tangent) as u32) // Using size of the position field
+                .build(),
+            vk::VertexInputAttributeDescription::builder()
+                .binding(0)
+                .location(4)
                 .format(vk::Format::R32G32_SFLOAT)
-                .offset(memoffset::offset_of!(Vertex, uv) as u32) // Using size of the position field
+                .offset(memoffset::offset_of!(Vertex, tex_coord) as u32) // Using size of the position field
                 .build(),
         ]
     }
 }
 
-pub struct LveModel {
+#[allow(dead_code)]
+pub struct Mesh {
     vertex_buffer: LveBuffer<Vertex>,
     vertex_count: u32,
     has_index_buffer: bool,
     index_buffer: LveBuffer<u32>,
     index_count: u32,
+    uniform_buffer: LveBuffer<MeshUniforms>,
+    textures: MeshTextures,
+    pub descriptor_set: ash::vk::DescriptorSet,
+    //descriptor_layout: Rc<LveDescriptorSetLayout>
 }
 
-impl LveModel {
-    pub fn new(lve_device: Rc<LveDevice>, builder: &Builder) -> Rc<Self> {
-        let (vertex_buffer, vertex_count) = Self::create_vertex_buffers(&lve_device, &builder.vertices);
-        let (has_index_buffer, index_buffer, index_count) = Self::create_index_buffers(&lve_device, &builder.indices);
+impl Mesh {
+    pub fn new(lve_device: &Rc<LveDevice>, vertices: Vec<Vertex>, indices: Vec<u32>, textures: MeshTextures, uniforms: MeshUniforms, global_pool: Rc<LveDescriptorPool>) -> Rc<Self> {
+        let (vertex_buffer, vertex_count) = Self::create_vertex_buffers(&lve_device, &vertices);
+        let (has_index_buffer, index_buffer, index_count) = Self::create_index_buffers(&lve_device, &indices);
+
+        let mut uniform_buffer = LveBuffer::new(
+            Rc::clone(&lve_device),
+            1,
+            ash::vk::BufferUsageFlags::UNIFORM_BUFFER,
+            ash::vk::MemoryPropertyFlags::HOST_VISIBLE,
+        );
+
+        uniform_buffer.map(0);
+
+        uniform_buffer.write_to_buffer(&[uniforms]);
+
+        let descriptor_layout = LveDescriptorSetLayout::new(Rc::clone(&lve_device))
+            .add_binding(0, ash::vk::DescriptorType::COMBINED_IMAGE_SAMPLER, ash::vk::ShaderStageFlags::ALL_GRAPHICS, 1)
+            .add_binding(1, ash::vk::DescriptorType::COMBINED_IMAGE_SAMPLER, ash::vk::ShaderStageFlags::ALL_GRAPHICS, 1)
+            .add_binding(2, ash::vk::DescriptorType::COMBINED_IMAGE_SAMPLER, ash::vk::ShaderStageFlags::ALL_GRAPHICS, 1)
+            .add_binding(3, ash::vk::DescriptorType::COMBINED_IMAGE_SAMPLER, ash::vk::ShaderStageFlags::ALL_GRAPHICS, 1)
+            .add_binding(4, ash::vk::DescriptorType::COMBINED_IMAGE_SAMPLER, ash::vk::ShaderStageFlags::ALL_GRAPHICS, 1)
+            .add_binding(5, ash::vk::DescriptorType::UNIFORM_BUFFER, ash::vk::ShaderStageFlags::ALL_GRAPHICS, 1)
+            .build().unwrap();
+
+        let descriptor_set = LveDescriptorSetWriter::new(descriptor_layout, global_pool.clone())
+            .write_image(0, &[textures.base_color.image_info])
+            .write_image(1, &[textures.metallic_roughness.image_info])
+            .write_image(2, &[textures.normal.image_info])
+            .write_image(3, &[textures.occlusion.image_info])
+            .write_image(4, &[textures.emissive.image_info])
+            .write_to_buffer(5, &[uniform_buffer.descriptor_info()])
+            .build().unwrap();
+
         
         Rc::new(Self {
             vertex_buffer,
@@ -213,17 +163,14 @@ impl LveModel {
             has_index_buffer,
             index_buffer,
             index_count,
+            uniform_buffer,
+            textures,
+            descriptor_set,
+            //descriptor_layout
         })
     }
 
-    pub fn new_from_file(lve_device: Rc<LveDevice>, file_path: &str) -> Rc<Self> {
-        let mut builder = Builder::new();
-        builder.load_from_file(file_path);
-
-        LveModel::new(lve_device, &builder)
-    }
-
-    #[allow(dead_code)]
+    /*#[allow(dead_code)]
     pub fn new_null(lve_device: Rc<LveDevice>) -> Rc<Self> {
         let vertex_buffer = LveBuffer::null(Rc::clone(&lve_device));
         let index_buffer = LveBuffer::null(Rc::clone(&lve_device));
@@ -233,8 +180,10 @@ impl LveModel {
             has_index_buffer: false,
             index_buffer,
             index_count: 0,
+            image_descriptor_set: ash::vk::DescriptorSet::null(),
+            image: ash::vk::Image::null()
         })
-    }
+    }*/
 
     pub unsafe fn draw(&self, device: &Device, command_buffer: vk::CommandBuffer) {
         if self.has_index_buffer {

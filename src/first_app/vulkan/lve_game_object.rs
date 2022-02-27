@@ -11,6 +11,7 @@ pub struct TransformComponent {
 }
 
 impl TransformComponent {
+    #[allow(dead_code)]
     pub fn mat4(&self) -> na::Matrix4<f32> {
 
         let c3 = self.rotation[2].cos();
@@ -27,6 +28,7 @@ impl TransformComponent {
                 )
     }
 
+    #[allow(dead_code)]
     pub fn normal_matrix(&self) -> na::Matrix4<f32> {
 
         let c3 = self.rotation[2].cos();
