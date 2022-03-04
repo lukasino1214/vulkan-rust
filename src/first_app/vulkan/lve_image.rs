@@ -5,6 +5,7 @@ use ash::vk;
 
 use std::rc::Rc;
 
+#[derive(Clone)]
 pub struct LveImage {
     lve_device: Rc<LveDevice>,
     image: vk::Image,

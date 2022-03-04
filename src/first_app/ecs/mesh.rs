@@ -123,7 +123,7 @@ pub struct Mesh {
 }
 
 impl Mesh {
-    pub fn new(lve_device: &Rc<LveDevice>, vertices: Vec<Vertex>, indices: Vec<u32>, textures: MeshTextures, uniforms: MeshUniforms, global_pool: Rc<LveDescriptorPool>) -> Rc<Self> {
+    pub fn new(lve_device: Rc<LveDevice>, vertices: Vec<Vertex>, indices: Vec<u32>, textures: MeshTextures, uniforms: MeshUniforms, global_pool: Rc<LveDescriptorPool>) -> Rc<Self> {
         let (vertex_buffer, vertex_count) = Self::create_vertex_buffers(&lve_device, &vertices);
         let (has_index_buffer, index_buffer, index_count) = Self::create_index_buffers(&lve_device, &indices);
 
