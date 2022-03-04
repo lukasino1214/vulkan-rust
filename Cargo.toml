@@ -7,7 +7,11 @@ edition = "2021"
 log = "0.4.14"
 env_logger = "0.9.0"
 ash = { version= "0.36.0", default-features = false, features = ["linked", "debug"] }
+<<<<<<< HEAD
 ash-window = "0.9.1"
+=======
+ash-window = "0.9.0"
+>>>>>>> master
 winit = "0.26.1"
 winit_input_helper = "0.11.1"
 nalgebra = "0.30.1"
