@@ -7,16 +7,16 @@ use std::ffi::CString;
 use std::rc::Rc;
 
 pub struct PipelineConfigInfo {
-    viewport_info: vk::PipelineViewportStateCreateInfo,
-    input_assembly_info: vk::PipelineInputAssemblyStateCreateInfo,
-    rasterization_info: vk::PipelineRasterizationStateCreateInfo,
-    multisample_info: vk::PipelineMultisampleStateCreateInfo,
-    _color_blend_attachment: Rc<vk::PipelineColorBlendAttachmentState>,
-    color_blend_info: Rc<vk::PipelineColorBlendStateCreateInfo>,
-    depth_stencil_info: vk::PipelineDepthStencilStateCreateInfo,
-    _dynamic_state_enables: Vec<vk::DynamicState>,
-    dynamic_state_info: vk::PipelineDynamicStateCreateInfo,
-    subpass: u32,
+    pub viewport_info: vk::PipelineViewportStateCreateInfo,
+    pub input_assembly_info: vk::PipelineInputAssemblyStateCreateInfo,
+    pub rasterization_info: vk::PipelineRasterizationStateCreateInfo,
+    pub multisample_info: vk::PipelineMultisampleStateCreateInfo,
+    pub color_blend_attachments: Vec<Rc<vk::PipelineColorBlendAttachmentState>>,
+    pub color_blend_info: Rc<vk::PipelineColorBlendStateCreateInfo>,
+    pub depth_stencil_info: vk::PipelineDepthStencilStateCreateInfo,
+    pub _dynamic_state_enables: Vec<vk::DynamicState>,
+    pub dynamic_state_info: vk::PipelineDynamicStateCreateInfo,
+    pub subpass: u32,
 }
 
 pub struct LvePipeline {
@@ -131,12 +131,15 @@ impl LvePipeline {
             .flags(vk::PipelineDynamicStateCreateFlags::empty())
             .build();
 
+            let mut color_blend_attachments = Vec::new();
+            color_blend_attachments.push(color_blend_attachment);
+
         PipelineConfigInfo {
             viewport_info,
             input_assembly_info,
             rasterization_info,
             multisample_info,
-            _color_blend_attachment: color_blend_attachment,
+            color_blend_attachments,
             color_blend_info,
             depth_stencil_info,
             _dynamic_state_enables: dynamic_state_enables,

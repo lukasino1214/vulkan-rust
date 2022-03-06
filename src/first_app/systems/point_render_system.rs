@@ -54,7 +54,64 @@ impl PointRenderSystem {
             "Cannot create pipeline before pipeline layout"
         );
 
-        let pipeline_config = LvePipeline::default_pipline_config_info();
+        let mut pipeline_config = LvePipeline::default_pipline_config_info();
+
+        let color_blend_attachment_1 = Rc::new(vk::PipelineColorBlendAttachmentState::builder()
+            .color_write_mask(vk::ColorComponentFlags::RGBA)
+            .blend_enable(false)
+            .src_color_blend_factor(vk::BlendFactor::ONE) // optional
+            .dst_color_blend_factor(vk::BlendFactor::ZERO) // optional
+            .color_blend_op(vk::BlendOp::ADD) // optional
+            .src_alpha_blend_factor(vk::BlendFactor::ONE) // optional
+            .dst_alpha_blend_factor(vk::BlendFactor::ZERO) // optional
+            .alpha_blend_op(vk::BlendOp::ADD)
+            .build()); // optional
+
+        let color_blend_attachment_2 = Rc::new(vk::PipelineColorBlendAttachmentState::builder()
+            .color_write_mask(vk::ColorComponentFlags::RGBA)
+            .blend_enable(false)
+            .src_color_blend_factor(vk::BlendFactor::ONE) // optional
+            .dst_color_blend_factor(vk::BlendFactor::ZERO) // optional
+            .color_blend_op(vk::BlendOp::ADD) // optional
+            .src_alpha_blend_factor(vk::BlendFactor::ONE) // optional
+            .dst_alpha_blend_factor(vk::BlendFactor::ZERO) // optional
+            .alpha_blend_op(vk::BlendOp::ADD)
+            .build()); // optional
+
+        let color_blend_attachment_3 = Rc::new(vk::PipelineColorBlendAttachmentState::builder()
+            .color_write_mask(vk::ColorComponentFlags::RGBA)
+            .blend_enable(false)
+            .src_color_blend_factor(vk::BlendFactor::ONE) // optional
+            .dst_color_blend_factor(vk::BlendFactor::ZERO) // optional
+            .color_blend_op(vk::BlendOp::ADD) // optional
+            .src_alpha_blend_factor(vk::BlendFactor::ONE) // optional
+            .dst_alpha_blend_factor(vk::BlendFactor::ZERO) // optional
+            .alpha_blend_op(vk::BlendOp::ADD)
+            .build()); // optional
+
+        let color_blend_attachment_4 = Rc::new(vk::PipelineColorBlendAttachmentState::builder()
+            .color_write_mask(vk::ColorComponentFlags::RGBA)
+            .blend_enable(false)
+            .src_color_blend_factor(vk::BlendFactor::ONE) // optional
+            .dst_color_blend_factor(vk::BlendFactor::ZERO) // optional
+            .color_blend_op(vk::BlendOp::ADD) // optional
+            .src_alpha_blend_factor(vk::BlendFactor::ONE) // optional
+            .dst_alpha_blend_factor(vk::BlendFactor::ZERO) // optional
+            .alpha_blend_op(vk::BlendOp::ADD)
+            .build()); // optional
+
+        let color_blend_attachments_array = [*color_blend_attachment_1, *color_blend_attachment_2, *color_blend_attachment_3, *color_blend_attachment_4];
+
+        let color_blend_info = Rc::new(vk::PipelineColorBlendStateCreateInfo::builder()
+            .logic_op_enable(false)
+            .logic_op(vk::LogicOp::COPY) // optional
+            .attachments(&color_blend_attachments_array)
+            .blend_constants([0.0, 0.0, 0.0, 0.0])
+            .build()); // optional
+            
+        let color_blend_attachments_vec = vec![color_blend_attachment_1, color_blend_attachment_2, color_blend_attachment_3, color_blend_attachment_4];
+        pipeline_config.color_blend_attachments = color_blend_attachments_vec;
+        pipeline_config.color_blend_info = color_blend_info;
 
         LvePipeline::new(
             lve_device,

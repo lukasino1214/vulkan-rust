@@ -8,11 +8,12 @@ use std::rc::Rc;
 #[derive(Clone)]
 pub struct LveImage {
     lve_device: Rc<LveDevice>,
-    image: vk::Image,
-    image_memory: vk::DeviceMemory,
+    pub image: vk::Image,
+    pub image_memory: vk::DeviceMemory,
     pub image_view: vk::ImageView,
     pub image_sampler: vk::Sampler,
-    pub image_info: vk::DescriptorImageInfo
+    pub image_info: vk::DescriptorImageInfo,
+    pub format: vk::Format
 }
 
 impl LveImage {
@@ -38,7 +39,8 @@ impl LveImage {
             image_memory: ash::vk::DeviceMemory::null(),
             image_view,
             image_sampler,
-            image_info
+            image_info,
+            format: vk::Format::UNDEFINED
         }
     }
 
@@ -81,7 +83,8 @@ impl LveImage {
             image_memory,
             image_view,
             image_sampler,
-            image_info
+            image_info,
+            format: vk::Format::UNDEFINED
         }
     }
 
